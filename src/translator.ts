@@ -1,4 +1,11 @@
-import { LanguageCode, TranslationOptions, TranslationResult } from "./types";
+import {
+  LanguageCode,
+  TranslationOptions,
+  TranslationResult,
+  LANGUAGE_CODE_MAPPING,
+  LANGUAGE_NAMES,
+} from "./types";
+import axios, { AxiosError } from "axios";
 
 /**
  * 기본 번역 옵션
@@ -72,6 +79,121 @@ export class DummyTranslator extends Translator {
   }
 
   public getSupportedLanguages(): LanguageCode[] {
-    return ["ko", "en", "ja", "zh", "es", "fr", "de"];
+    return ["ko", "en", "ja", "zh-Hans", "es", "fr", "de"];
+  }
+}
+
+/**
+ * DeepL API를 사용한 번역기 구현
+ */
+export class DeepLTranslator extends Translator {
+  private apiKey: string;
+  private apiUrl: string;
+  private readonly VARIABLE_PATTERN = /\{([^}]+)\}/g;
+
+  /**
+   * DeepL 번역기 생성자
+   * @param options 번역 옵션
+   * @param apiKey DeepL API 키
+   * @param apiUrl DeepL API URL (기본값: https://api-free.deepl.com/v2/translate)
+   */
+  constructor(
+    options: TranslationOptions,
+    apiKey: string,
+    apiUrl: string = "https://api-free.deepl.com/v2/translate"
+  ) {
+    super(options);
+
+    if (!apiKey) {
+      throw new Error("DeepL API 키가 필요합니다.");
+    }
+
+    this.apiKey = apiKey;
+    this.apiUrl = apiUrl;
+  }
+
+  /**
+   * 언어 코드를 DeepL API 형식으로 변환
+   * @param langCode 언어 코드
+   * @returns DeepL API 형식의 언어 코드
+   */
+  private formatLanguageCodeForApi(langCode: LanguageCode): string {
+    // DeepL API는 언어 코드를 특정 형식으로 요구함
+    // en-GB → EN-GB, zh-Hans → ZH, pt-BR → PT-BR 등
+    return langCode.toUpperCase();
+  }
+
+  /**
+   * DeepL API를 사용하여 텍스트 번역
+   * @param text 번역할 텍스트
+   * @returns 번역 결과
+   */
+  protected async translateText(text: string): Promise<TranslationResult> {
+    try {
+      // 변수를 <keep>변수</keep> 형태로 변환하여 번역에서 제외
+      const textToTranslate = text.replace(
+        this.VARIABLE_PATTERN,
+        (match) => `<keep>${match}</keep>`
+      );
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          text: [textToTranslate],
+          target_lang: this.formatLanguageCodeForApi(
+            this.options.targetLanguage
+          ),
+          source_lang: this.options.autoDetect
+            ? undefined
+            : this.formatLanguageCodeForApi(this.options.sourceLanguage),
+          // XML 처리 옵션 추가
+          tag_handling: "xml",
+          // keep 태그 내부는 번역하지 않도록 설정
+          ignore_tags: ["keep"],
+        },
+        {
+          headers: {
+            Authorization: `DeepL-Auth-Key ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // <keep> 태그 제거하고 원래 변수 형태 복원
+      let translatedText = response.data.translations[0].text;
+      translatedText = translatedText.replace(/<keep>|<\/keep>/g, "");
+
+      return {
+        originalText: text,
+        translatedText,
+        sourceLanguage: this.options.sourceLanguage,
+        targetLanguage: this.options.targetLanguage,
+      };
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        throw new Error(
+          `DeepL API 번역 실패: ${
+            axiosError.response?.data || axiosError.message
+          }`
+        );
+      } else {
+        throw new Error(`DeepL API 번역 실패: ${String(error)}`);
+      }
+    }
+  }
+
+  /**
+   * DeepL API에서 지원하는 언어 목록 반환
+   */
+  public getSupportedLanguages(): LanguageCode[] {
+    return Object.values(LANGUAGE_CODE_MAPPING);
+  }
+
+  /**
+   * DeepL API에서 지원하는 언어 이름과 코드 맵 반환
+   */
+  public getSupportedLanguageNameMap(): Record<LanguageCode, string> {
+    return LANGUAGE_NAMES;
   }
 }
