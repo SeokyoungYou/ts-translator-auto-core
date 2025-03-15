@@ -5,3 +5,4 @@
 
 export * from "./translator";
 export * from "./types";
+export * from "./manager";
