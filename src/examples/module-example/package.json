@@ -1,0 +1,21 @@
+{
+  "name": "ts-translator-module-example",
+  "version": "1.0.0",
+  "description": "Dual module system example for DeepL translation management",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "translate": "tsx index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ts-translator-auto-core": "^1.1.4",
+    "tsx": "^4.19.3"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  },
+  "author": "",
+  "license": "ISC"
+}

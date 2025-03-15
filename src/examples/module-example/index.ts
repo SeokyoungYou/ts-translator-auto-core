@@ -1,23 +1,31 @@
-import { LanguageCode } from "../types";
 import dotenv from "dotenv";
 import path from "path";
-import { TranslationManager, TranslationConfig } from "../manager";
+import { fileURLToPath } from "url";
+import {
+  TranslationManager,
+  TranslationConfig,
+  LanguageCode,
+} from "ts-translator-auto-core";
 
 // Load .env file
 dotenv.config();
+
+// ES 모듈에서 경로 설정
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirPath = path.dirname(currentFilePath);
 
 // ===== Configuration =====
 // Configure input/output directories (modify as needed)
 const CONFIG: TranslationConfig = {
   // Input file settings
   input: {
-    directory: path.join(__dirname, "data"),
+    directory: path.join(currentDirPath, "data"),
     file: "ko.ts", // Input file name
     fileExportName: "default", // Export name in the file
   },
   // Output settings
   output: {
-    directory: path.join(__dirname, "data"),
+    directory: path.join(currentDirPath, "data"),
     prettyPrint: true, // Apply indentation for JSON output
   },
   // Translation settings
@@ -48,7 +56,7 @@ async function main() {
   }
 
   try {
-    // Create TranslationManager instance
+    // Create TranslationManager instance with ES Module path workaround
     const translationManager = new TranslationManager(CONFIG, apiKey);
 
     // Execute translation for all languages
@@ -61,8 +69,8 @@ async function main() {
   }
 }
 
-// Run script
-if (require.main === module) {
+// ES module environment
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => console.error("❌ Error occurred:", error));
 }
 

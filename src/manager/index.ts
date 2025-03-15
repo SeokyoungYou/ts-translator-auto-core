@@ -205,12 +205,10 @@ export class TranslationManager {
       }
 
       // Dynamic import of the file
-      const importPath = targetFilePath.replace(/\.ts$/, "");
-      const relativePath = path.relative(__dirname, importPath);
-
       try {
-        // Import using relative path
-        const module = await import(`./${relativePath}`);
+        // 파일 경로를 URL로 변환하여 임포트 ('file://' 프로토콜 사용)
+        const fileUrl = `file://${path.resolve(targetFilePath)}`;
+        const module = await import(fileUrl);
         const data = module.default;
 
         if (!data) {
