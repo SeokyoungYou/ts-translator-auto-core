@@ -19,6 +19,12 @@ const CONFIG = {
     directory: path.join(__dirname, "data"),
     prettyPrint: true, // JSON 출력에 들여쓰기 적용
     preserveNestedStructure: true, // 중첩 구조 유지
+    fileNameFormat: "camelCase", // 파일 이름 형식 - 카멜 케이스 사용
+    // 아래는 사용자 정의 포맷팅 함수 예시 (fileNameFormat 대신 사용 가능)
+    // formatLanguageCode: (language) => {
+    //   // 예: zh-Hans를 zhHans로 변환
+    //   return language.replace(/-/g, "");
+    // },
   },
   // 번역 설정
   translation: {

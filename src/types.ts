@@ -153,3 +153,14 @@ export interface TranslationResult {
   /** Target language */
   targetLanguage: LanguageCode;
 }
+
+/**
+ * 출력 파일 이름 포맷 옵션
+ */
+export type FileNameFormat =
+  | "default" // 그대로 유지 (예: "zh-Hans")
+  | "simple" // 하이픈 제거 (예: "zhHans")
+  | "camelCase" // 카멜 케이스 (예: "zhHans")
+  | "pascalCase" // 파스칼 케이스 (예: "ZhHans")
+  | "snake_case" // 스네이크 케이스 (예: "zh_hans")
+  | "kebab-case"; // 케밥 케이스 (예: "zh-hans")

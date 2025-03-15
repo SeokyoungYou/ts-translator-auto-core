@@ -1,5 +1,5 @@
 import { DeepLTranslator } from "./translator";
-import { LanguageCode, TranslationOptions } from "./types";
+import { LanguageCode, TranslationOptions, FileNameFormat } from "./types";
 import fs from "fs";
 import path from "path";
 import { flattenObject, unflattenObject, hasNestedStructure } from "./utils";
@@ -17,6 +17,8 @@ export interface TranslationConfig {
     directory: string;
     prettyPrint: boolean;
     preserveNestedStructure?: boolean; // 중첩 구조 유지 여부
+    formatLanguageCode?: (language: LanguageCode) => string; // 언어 코드 포맷팅 함수
+    fileNameFormat?: FileNameFormat; // 파일 이름 형식 지정 옵션
   };
   translation: {
     targetLanguages: LanguageCode[];
@@ -231,15 +233,18 @@ export class TranslationManager {
       // 입력 파일의 확장자 추출
       const fileExtension = path.extname(this.config.input.file);
 
+      // 파일 이름용 언어 코드 변환
+      const filenameLanguage = this.formatOutput(language);
+
       const targetFilePath = path.join(
         this.config.output.directory,
-        `${language}${fileExtension}`
+        `${filenameLanguage}${fileExtension}`
       );
 
       // Return null if file doesn't exist
       if (!fs.existsSync(targetFilePath)) {
         console.log(
-          `⚠️ No existing ${language}${fileExtension} file. Creating new file.`
+          `⚠️ No existing ${filenameLanguage}${fileExtension} file. Creating new file.`
         );
         return null;
       }
@@ -248,7 +253,7 @@ export class TranslationManager {
       const fileContent = fs.readFileSync(targetFilePath, "utf-8");
 
       // 언어 코드를 변수 이름으로 사용
-      const langVarName = language.replace("-", "");
+      const langVarName = filenameLanguage;
 
       // Find export statement (파일 형식에 따라 검색 패턴 변경)
       const exportRegex =
@@ -258,7 +263,7 @@ export class TranslationManager {
 
       if (!exportRegex.test(fileContent)) {
         console.log(
-          `⚠️ Could not find export for ${langVarName} in ${language}${fileExtension} file.`
+          `⚠️ Could not find export for ${langVarName} in ${filenameLanguage}${fileExtension} file.`
         );
         return null;
       }
@@ -292,29 +297,27 @@ export class TranslationManager {
 
         if (!data) {
           console.log(
-            `⚠️ Could not find export in ${language}${fileExtension} file.`
+            `⚠️ Could not find export in ${filenameLanguage}${fileExtension} file.`
           );
           return null;
         }
 
         console.log(
-          `📖 Loaded existing ${language}${fileExtension} file. (${
+          `�� Loaded existing ${filenameLanguage}${fileExtension} file. (${
             Object.keys(data).length
           } keys)`
         );
 
         // 중첩 구조 확인 및 평탄화
         if (hasNestedStructure(data)) {
-          console.log(
-            `🔄 '${language}' 파일에서 중첩된 객체 구조가 감지되었습니다. 평탄화를 진행합니다.`
-          );
+          console.log(`🔄 Nested structure detected. Flattening...`);
           return flattenObject(data);
         }
 
         return data as Record<string, string>;
       } catch (importError) {
         console.log(
-          `⚠️ Failed to import ${language}${fileExtension} file: ${importError}`
+          `⚠️ Failed to import ${filenameLanguage}${fileExtension} file: ${importError}`
         );
         return null;
       }
@@ -334,9 +337,12 @@ export class TranslationManager {
     // 입력 파일의 확장자 추출
     const fileExtension = path.extname(this.config.input.file);
 
+    // 파일 이름용 언어 코드 변환
+    const filenameLanguage = this.formatOutput(language);
+
     const outputPath = path.join(
       this.config.output.directory,
-      `${language}${fileExtension}`
+      `${filenameLanguage}${fileExtension}`
     );
 
     // Create directory if it doesn't exist
@@ -353,14 +359,14 @@ export class TranslationManager {
       : translations;
 
     // 언어 코드를 변수 이름으로 사용
-    const langVarName = language.replace("-", "");
+    const langVarName = filenameLanguage;
 
     // 확장자에 따라 출력 포맷 결정
     let fileContent;
     if (fileExtension === ".ts") {
       fileContent = `
 /**
- * ${language} translations
+ * ${filenameLanguage} translations
  * Auto-generated from ${this.config.translation.sourceLanguage} source
  */
 
@@ -376,7 +382,7 @@ export default ${langVarName};
       // JavaScript 파일 (.js)
       fileContent = `
 /**
- * ${language} translations
+ * ${filenameLanguage} translations
  * Auto-generated from ${this.config.translation.sourceLanguage} source
  */
 
@@ -388,5 +394,64 @@ module.exports = ${langVarName};
 
     fs.writeFileSync(outputPath, fileContent);
     console.log(`✅ Translation file saved: ${outputPath}`);
+  }
+
+  /**
+   * 언어 코드를 출력 파일 이름 형식으로 변환
+   * @param language 언어 코드
+   * @returns 변환된 파일 이름 형식
+   */
+  private formatOutput(language: LanguageCode): string {
+    // 사용자 정의 포맷팅 함수가 있으면 해당 함수 사용
+    if (this.config.output.formatLanguageCode) {
+      return this.config.output.formatLanguageCode(language);
+    }
+
+    // fileNameFormat 옵션에 따라 형식 변환
+    const format = this.config.output.fileNameFormat || "simple";
+
+    switch (format) {
+      case "default":
+        // 그대로 유지
+        return language;
+
+      case "simple":
+        // 하이픈 제거 (예: zh-Hans -> zhHans)
+        return language.replace(/-/g, "");
+
+      case "camelCase":
+        // 카멜 케이스 (예: zh-hans -> zhHans)
+        return language
+          .toLowerCase()
+          .split("-")
+          .map((part, index) =>
+            index === 0
+              ? part
+              : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+          )
+          .join("");
+
+      case "pascalCase":
+        // 파스칼 케이스 (예: zh-hans -> ZhHans)
+        return language
+          .toLowerCase()
+          .split("-")
+          .map(
+            (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+          )
+          .join("");
+
+      case "snake_case":
+        // 스네이크 케이스 (예: zh-Hans -> zh_hans)
+        return language.toLowerCase().replace(/-/g, "_");
+
+      case "kebab-case":
+        // 케밥 케이스 (예: zh-Hans -> zh-hans)
+        return language.toLowerCase();
+
+      default:
+        // 기본값: 하이픈 제거
+        return language.replace(/-/g, "");
+    }
   }
 }
