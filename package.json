@@ -13,7 +13,7 @@
     "test": "jest",
     "prepare": "npm run build",
     "prepublishOnly": "npm test",
-    "example": "node -r ts-node/register src/examples/translate-languages.js"
+    "translate-languages": "node -r ts-node/register src/examples/translate-languages.js"
   },
   "keywords": [
     "translator",

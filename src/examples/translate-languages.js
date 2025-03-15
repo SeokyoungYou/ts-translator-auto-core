@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * 다국어 번역 예제 실행 스크립트
+ * Multi-language translation example execution script
  *
- * 사용법:
- * 1. 스크립트에 실행 권한 부여: chmod +x translate-languages.js
- * 2. 스크립트 실행: ./translate-languages.js
+ * Usage:
+ * 1. Give execution permission to the script: chmod +x translate-languages.js
+ * 2. Run the script: ./translate-languages.js
  */
 
 require("ts-node").register({
@@ -17,14 +17,14 @@ require("ts-node").register({
 
 const { main } = require("./multi-language-example");
 
-console.log("📚 다국어 번역 예제를 시작합니다...\n");
+console.log("📚 Starting multi-language translation example...\n");
 
 main()
   .then(() => {
-    console.log("\n🎉 번역 예제가 성공적으로 완료되었습니다.");
+    console.log("\n🎉 Translation example completed successfully.");
     process.exit(0);
   })
   .catch((error) => {
-    console.error("\n❌ 번역 중 오류가 발생했습니다:", error);
+    console.error("\n❌ An error occurred during translation:", error);
     process.exit(1);
   });

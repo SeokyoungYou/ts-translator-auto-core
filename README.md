@@ -1,6 +1,40 @@
 # TS Translator Automation Core
 
-A core library for utilizing various translation APIs written in TypeScript.
+A TypeScript library for automating translations across multiple languages using various translation APIs.
+
+## Key Features
+
+- Variable pattern preservation in translations (e.g., `{name}`)
+
+```typescript
+const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
+
+// Variables like {name} are preserved in translation
+const result = await translator.translate(
+  "안녕하세요, 변수 {name}는 보존됩니다."
+);
+console.log(result.translatedText);
+// Output: "Hello, the variable {name} is preserved."
+```
+
+- Context-based translation for improved accuracy
+
+```typescript
+// Without context - might be ambiguous
+const result1 = await translator.translate("{count}개");
+console.log(result1.translatedText); // Could be "{count} dog" or just "{count}"
+
+// With context - provides better translation
+const result2 = await translator.translate("{count}개", "item_count");
+console.log(result2.translatedText); // "{count} items"
+
+const result3 = await translator.translate("{count}명", "person_count");
+console.log(result3.translatedText); // "{count} people"
+```
+
+- Type safety with TypeScript
+- Support for all 33 languages available in DeepL API
+- Translation automation tools for batch processing
 
 ## Installation
 
@@ -8,197 +42,138 @@ A core library for utilizing various translation APIs written in TypeScript.
 npm install ts-translator-auto-core
 ```
 
-## Features
+## Quick Start
 
-- Support for various translation services (DeepL, Dummy, etc.)
-- Variable pattern preservation (e.g., `{name}`)
-- Extensible abstract class-based design
-- Type safety support
-- Support for all languages supported by DeepL (33 languages)
-- Provides language translation automation tools
-- Context-based translation using keys for better translation results
+### 1. Environment Setup
 
-## Supported Languages
+Create an `.env` file with your DeepL API key:
 
-33 languages supported by the DeepL API:
-
-- Arabic (ar)
-- Bulgarian (bg)
-- Czech (cs)
-- Danish (da)
-- German (de)
-- Greek (el)
-- English (US) (en)
-- English (UK) (en-GB)
-- Spanish (es)
-- Estonian (et)
-- Finnish (fi)
-- French (fr)
-- Hungarian (hu)
-- Indonesian (id)
-- Italian (it)
-- Japanese (ja)
-- Korean (ko)
-- Lithuanian (lt)
-- Latvian (lv)
-- Norwegian (nb)
-- Dutch (nl)
-- Polish (pl)
-- Portuguese (Portugal) (pt)
-- Portuguese (Brazil) (pt-BR)
-- Romanian (ro)
-- Russian (ru)
-- Slovak (sk)
-- Slovenian (sl)
-- Swedish (sv)
-- Turkish (tr)
-- Ukrainian (uk)
-- Chinese (Simplified) (zh-Hans)
-- Chinese (Traditional) (zh-Hant)
-
-## Usage
-
-### Environment Setup
-
-1. Copy the `.env.example` file to create an `.env` file
-2. Set up your DeepL API key
-
-```
+```bash
 cp .env.example .env
 ```
 
-Content of the `.env` file:
+Then add your API key:
 
 ```
 DEEPL_API_KEY=your_deepl_api_key_here
 ```
 
-### DeepL Translator Usage Example
+### 2. Batch Translation with TranslationManager
+
+Translate files with multiple languages at once:
 
 ```typescript
-import { DeepLTranslator } from "ts-translator-auto-core";
-import { TranslationOptions } from "ts-translator-auto-core/types";
+import {
+  LanguageCode,
+  TranslationManager,
+  TranslationConfig,
+} from "ts-translator-auto-core";
 import dotenv from "dotenv";
+import path from "path";
 
-// Load .env file
 dotenv.config();
 
-async function main() {
-  // Set translation options
-  const options: TranslationOptions = {
-    sourceLanguage: "ko",
-    targetLanguage: "en",
-    autoDetect: true,
+const CONFIG: TranslationConfig = {
+  input: {
+    directory: path.join(__dirname, "data"),
+    file: "ko.ts",
+    fileExportName: "default",
+  },
+  output: {
+    directory: path.join(__dirname, "data"),
+    prettyPrint: true,
+  },
+  translation: {
+    targetLanguages: [
+      "en", // English
+      "ja", // Japanese
+      "zh-Hans", // Chinese (Simplified)
+      "fr", // French
+      "de", // German
+    ] as LanguageCode[],
+    sourceLanguage: "ko" as LanguageCode,
+    autoDetect: false,
     useCache: true,
-  };
+    skipExistingKeys: true,
+  },
+};
 
-  // Create DeepL translator
-  const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
+async function main() {
+  const apiKey = process.env.DEEPL_API_KEY;
+  if (!apiKey) {
+    console.error("❌ DeepL API key is not configured in .env file");
+    process.exit(1);
+  }
 
-  // Translate text
-  const result = await translator.translate(
-    "안녕하세요, 변수 {name}는 보존됩니다."
-  );
-  console.log(result.translatedText);
-  // Output: "Hello, the variable {name} is preserved."
+  try {
+    const translationManager = new TranslationManager(CONFIG, apiKey);
+    await translationManager.translateAll();
+    console.log("\n✨ All language translations completed.");
+  } catch (error) {
+    console.error(`❌ Error: ${error}`);
+    process.exit(1);
+  }
 }
 
 main().catch(console.error);
 ```
 
-### Context-Based Translation
+### 3. Command-Line Translation Tool
 
-The translator can use a key or context string to improve translation accuracy. This is especially helpful for ambiguous terms or counting units:
+The library includes a CLI tool for translation:
 
-```typescript
-import { DeepLTranslator } from "ts-translator-auto-core";
-import { TranslationOptions } from "ts-translator-auto-core/types";
+Run the translation tool via npm script by adding to your package.json:
 
-async function main() {
-  const options = { sourceLanguage: "ko", targetLanguage: "en" };
-  const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
-
-  // Without context - might translate incorrectly
-  const result1 = await translator.translate("{count}개");
-  console.log(result1.translatedText); // Could be "{count} dog" or "{count}"
-
-  // With context - provides better translation
-  const result2 = await translator.translate("{count}개", "item_count");
-  console.log(result2.translatedText); // "{count} items"
-
-  // Another example with context
-  const result3 = await translator.translate("{count}명", "person_count");
-  console.log(result3.translatedText); // "{count} people"
+```json
+"scripts": {
+  "translate-languages": "node -r ts-node/register src/examples/translate-languages.js"
 }
 ```
 
-The context is used only for translation guidance and is not included in the translated output.
-
-### Multiple Language Translation Example
-
-```typescript
-import { DeepLTranslator } from "ts-translator-auto-core";
-import {
-  TranslationOptions,
-  LanguageCode,
-} from "ts-translator-auto-core/types";
-
-async function main() {
-  const options: TranslationOptions = {
-    sourceLanguage: "ko",
-    targetLanguage: "en", // Default value
-    autoDetect: false,
-  };
-
-  const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
-
-  // Print all available languages
-  console.log("Supported languages list:");
-  translator.getSupportedLanguages().forEach((lang) => {
-    console.log(`- ${lang}`);
-  });
-
-  // Select target languages for translation
-  const targetLanguages: LanguageCode[] = ["en", "ja", "zh-Hans", "fr"];
-  const text = "안녕하세요, 세계!";
-
-  // Translate to each language
-  for (const lang of targetLanguages) {
-    // Change options
-    const langOptions = { ...options, targetLanguage: lang };
-    const langTranslator = new DeepLTranslator(
-      langOptions,
-      process.env.DEEPL_API_KEY!
-    );
-
-    // Execute translation
-    const result = await langTranslator.translate(text);
-    console.log(`${lang}: ${result.translatedText}`);
-  }
-}
-```
-
-### Translation File Automation Tool
-
-The project includes tools for automating translation files:
+Then run:
 
 ```bash
-# View all language lists
-npx ts-node src/examples/translate-files.ts --list-languages
-
-# Generate translation files for specific languages (en, ja, fr)
-npx ts-node src/examples/translate-files.ts --lang en,ja,fr
-
-# Generate translations from a specific source file
-npx ts-node src/examples/translate-files.ts --source lang/custom/ko --output lang/custom
+npm run translate-languages
 ```
 
-The translation automation tool automatically uses the key names as context for better translations.
+### 4. Output Results
+
+Translation output is organized by language:
+
+- `en.ts` - English
+- `ja.ts` - Japanese
+- `zhHans.ts` - Chinese (Simplified)
+- `fr.ts` - French
+- `de.ts` - German
 
 ## Supported Translators
 
-1. **DummyTranslator** - A dummy translator for testing
-2. **DeepLTranslator** - A translator using the DeepL API (supports 33 languages)
+- **DeepLTranslator**: Uses DeepL API for high-quality translations
+- **DummyTranslator**: For testing and development purposes
+
+## Supported Languages
+
+All 33 languages supported by DeepL API:
+
+| Language     | Code  |     | Language              | Code    |
+| ------------ | ----- | --- | --------------------- | ------- |
+| Arabic       | ar    |     | Italian               | it      |
+| Bulgarian    | bg    |     | Japanese              | ja      |
+| Czech        | cs    |     | Korean                | ko      |
+| Danish       | da    |     | Lithuanian            | lt      |
+| German       | de    |     | Latvian               | lv      |
+| Greek        | el    |     | Norwegian             | nb      |
+| English (US) | en    |     | Dutch                 | nl      |
+| English (UK) | en-GB |     | Polish                | pl      |
+| Spanish      | es    |     | Portuguese            | pt      |
+| Estonian     | et    |     | Portuguese (Brazil)   | pt-BR   |
+| Finnish      | fi    |     | Romanian              | ro      |
+| French       | fr    |     | Russian               | ru      |
+| Hungarian    | hu    |     | Slovak                | sk      |
+| Indonesian   | id    |     | Slovenian             | sl      |
+| Swedish      | sv    |     | Ukrainian             | uk      |
+| Turkish      | tr    |     | Chinese (Simplified)  | zh-Hans |
+|              |       |     | Chinese (Traditional) | zh-Hant |
 
 ## License
 

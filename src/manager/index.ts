@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 /**
- * 번역 설정을 위한 타입 정의
+ * Type definition for translation configuration
  */
 export interface TranslationConfig {
   input: {
@@ -26,16 +26,16 @@ export interface TranslationConfig {
 }
 
 /**
- * 다국어 번역을 관리하는 클래스
+ * Class for managing multi-language translations
  */
 export class TranslationManager {
   private config: TranslationConfig;
   private apiKey: string;
 
   /**
-   * TranslationManager 생성자
-   * @param config 번역 설정
-   * @param apiKey DeepL API 키
+   * TranslationManager constructor
+   * @param config Translation configuration
+   * @param apiKey DeepL API key
    */
   constructor(config: TranslationConfig, apiKey: string) {
     this.config = config;
@@ -43,42 +43,42 @@ export class TranslationManager {
   }
 
   /**
-   * 모든 대상 언어로 번역을 실행하는 메서드
+   * Method to execute translation to all target languages
    */
   async translateAll() {
     try {
-      // 원본 데이터 로드
+      // Load source data
       const sourceData = await this.loadSourceData();
 
-      console.log("🌐 여러 언어로 번역을 시작합니다...\n");
-      console.log(`📂 입력 디렉토리: ${this.config.input.directory}`);
-      console.log(`📂 출력 디렉토리: ${this.config.output.directory}`);
+      console.log("🌐 Starting translation to multiple languages...\n");
+      console.log(`📂 Input directory: ${this.config.input.directory}`);
+      console.log(`📂 Output directory: ${this.config.output.directory}`);
       console.log(
-        `🈁 번역할 언어: ${this.config.translation.targetLanguages.join(
+        `🈁 Target languages: ${this.config.translation.targetLanguages.join(
           ", "
         )}\n`
       );
 
-      // 각 대상 언어에 대해 번역 수행
+      // Translate for each target language
       for (const targetLanguage of this.config.translation.targetLanguages) {
         await this.translateToLanguage(targetLanguage, sourceData);
       }
     } catch (error) {
-      console.error(`❌ 번역 과정에서 오류가 발생했습니다: ${error}`);
+      console.error(`❌ An error occurred during translation: ${error}`);
       throw error;
     }
   }
 
   /**
-   * 특정 언어로 번역하는 메서드
+   * Method to translate to a specific language
    */
   async translateToLanguage(
     targetLanguage: LanguageCode,
     sourceData: Record<string, string>
   ) {
-    console.log(`\n🔄 '${targetLanguage}'로 번역 중...`);
+    console.log(`\n🔄 Translating to '${targetLanguage}'...`);
 
-    // 번역 옵션 설정
+    // Set translation options
     const options: TranslationOptions = {
       sourceLanguage: this.config.translation.sourceLanguage,
       targetLanguage: targetLanguage,
@@ -86,63 +86,63 @@ export class TranslationManager {
       useCache: this.config.translation.useCache,
     };
 
-    // DeepL 번역기 생성
+    // Create DeepL translator
     const translator = new DeepLTranslator(options, this.apiKey);
 
-    // 이미 존재하는 번역 로드
+    // Load existing translations
     const existingTranslations = this.config.translation.skipExistingKeys
       ? await this.loadExistingTranslation(targetLanguage)
       : null;
 
-    // 번역 결과를 저장할 객체 (기존 번역 포함)
+    // Object to store translation results (including existing translations)
     const translations: Record<string, string> = existingTranslations
       ? { ...existingTranslations }
       : {};
 
-    // 추가된 새 키 수 추적
+    // Track count of new keys
     let newKeysCount = 0;
     let skippedKeysCount = 0;
 
-    // 각 문자열 번역
+    // Translate each string
     for (const [key, text] of Object.entries(sourceData)) {
-      // 이미 번역된 키는 건너뛰기 (설정이 활성화된 경우)
+      // Skip already translated keys (if enabled)
       if (this.config.translation.skipExistingKeys && key in translations) {
-        // console.log(`⏩ 이미 번역된 키 건너뛰기: "${key}"`);
+        // console.log(`⏩ Skipping already translated key: "${key}"`);
         skippedKeysCount++;
         continue;
       }
 
       try {
-        console.log(`📝 번역 중: "${key}" -> "${text}"`);
+        console.log(`📝 Translating: "${key}" -> "${text}"`);
 
-        // 컨텍스트로 키를 사용하여 번역
+        // Use key as context for translation
         const result = await translator.translate(text, key);
         translations[key] = result.translatedText;
         newKeysCount++;
 
-        console.log(`✅ 번역됨: "${result.translatedText}"`);
+        console.log(`✅ Translated: "${result.translatedText}"`);
       } catch (error) {
-        console.error(`❌ 번역 실패: ${error}`);
-        // 실패한 경우 원본 텍스트 유지
+        console.error(`❌ Translation failed: ${error}`);
+        // Keep original text if translation fails
         translations[key] = text;
       }
     }
 
-    // 번역 통계 출력
-    console.log(`\n📊 번역 통계:`);
-    console.log(`   - 전체 키: ${Object.keys(sourceData).length}개`);
-    console.log(`   - 새로 번역된 키: ${newKeysCount}개`);
-    console.log(`   - 건너뛴 키: ${skippedKeysCount}개`);
+    // Print translation statistics
+    console.log(`\n📊 Translation statistics:`);
+    console.log(`   - Total keys: ${Object.keys(sourceData).length}`);
+    console.log(`   - Newly translated keys: ${newKeysCount}`);
+    console.log(`   - Skipped keys: ${skippedKeysCount}`);
     console.log(
-      `   - 최종 번역 파일 키 수: ${Object.keys(translations).length}개`
+      `   - Final translation file keys: ${Object.keys(translations).length}`
     );
 
-    // 파일로 저장
+    // Save to file
     await this.saveTranslation(targetLanguage, translations);
   }
 
   /**
-   * 입력 파일에서 번역할 데이터를 불러오는 메서드
+   * Method to load data to translate from input file
    */
   async loadSourceData(): Promise<Record<string, string>> {
     try {
@@ -152,28 +152,28 @@ export class TranslationManager {
       );
 
       if (!fs.existsSync(inputFilePath)) {
-        throw new Error(`입력 파일을 찾을 수 없습니다: ${inputFilePath}`);
+        throw new Error(`Input file not found: ${inputFilePath}`);
       }
 
-      // 파일 동적 import
+      // Dynamic import of the file
       const module = await import(inputFilePath);
       const data = module[this.config.input.fileExportName];
 
       if (!data) {
         throw new Error(
-          `입력 파일에서 '${this.config.input.fileExportName}' export를 찾을 수 없습니다.`
+          `Could not find '${this.config.input.fileExportName}' export in the input file.`
         );
       }
 
       return data as Record<string, string>;
     } catch (error) {
-      console.error(`❌ 입력 파일 로드 실패: ${error}`);
+      console.error(`❌ Failed to load input file: ${error}`);
       throw error;
     }
   }
 
   /**
-   * 이미 존재하는 번역 파일을 불러오는 메서드
+   * Method to load existing translation file
    */
   async loadExistingTranslation(
     language: LanguageCode
@@ -184,60 +184,60 @@ export class TranslationManager {
         `${language}.ts`
       );
 
-      // 파일이 존재하지 않으면 null 반환
+      // Return null if file doesn't exist
       if (!fs.existsSync(targetFilePath)) {
-        console.log(`⚠️ 기존 ${language}.ts 파일이 없습니다. 새로 생성합니다.`);
+        console.log(`⚠️ No existing ${language}.ts file. Creating new file.`);
         return null;
       }
 
-      // 파일 내용 읽기
+      // Read file content
       const fileContent = fs.readFileSync(targetFilePath, "utf-8");
 
-      // export default 구문 찾기
+      // Find export default statement
       const exportName = language.replace("-", "");
       const exportRegex = new RegExp(`export\\s+default\\s+${exportName}`);
 
       if (!exportRegex.test(fileContent)) {
         console.log(
-          `⚠️ ${language}.ts 파일에서 export default ${exportName}를 찾을 수 없습니다.`
+          `⚠️ Could not find export default ${exportName} in ${language}.ts file.`
         );
         return null;
       }
 
-      // 파일 동적 import
+      // Dynamic import of the file
       const importPath = targetFilePath.replace(/\.ts$/, "");
       const relativePath = path.relative(__dirname, importPath);
 
       try {
-        // 상대 경로로 import
+        // Import using relative path
         const module = await import(`./${relativePath}`);
         const data = module.default;
 
         if (!data) {
           console.log(
-            `⚠️ ${language}.ts 파일에서 default export를 찾을 수 없습니다.`
+            `⚠️ Could not find default export in ${language}.ts file.`
           );
           return null;
         }
 
         console.log(
-          `📖 기존 ${language}.ts 파일을 불러왔습니다. (${
+          `📖 Loaded existing ${language}.ts file. (${
             Object.keys(data).length
-          }개 키)`
+          } keys)`
         );
         return data as Record<string, string>;
       } catch (importError) {
-        console.log(`⚠️ ${language}.ts 파일 import 실패: ${importError}`);
+        console.log(`⚠️ Failed to import ${language}.ts file: ${importError}`);
         return null;
       }
     } catch (error) {
-      console.log(`⚠️ 기존 ${language}.ts 파일 로드 실패: ${error}`);
+      console.log(`⚠️ Failed to load existing ${language}.ts file: ${error}`);
       return null;
     }
   }
 
   /**
-   * 지정된 언어로 번역 결과를 파일로 저장하는 메서드
+   * Method to save translation results to file for the specified language
    */
   async saveTranslation(
     language: LanguageCode,
@@ -248,15 +248,15 @@ export class TranslationManager {
       `${language}.ts`
     );
 
-    // 결과를 저장할 디렉토리가 없으면 생성
+    // Create directory if it doesn't exist
     if (!fs.existsSync(this.config.output.directory)) {
       fs.mkdirSync(this.config.output.directory, { recursive: true });
     }
 
-    // 들여쓰기 설정
+    // Set indentation
     const indentation = this.config.output.prettyPrint ? 2 : 0;
 
-    // TypeScript 파일 형식으로 저장
+    // Save as TypeScript file
     const fileContent = `
 /**
  * ${language} translations
@@ -273,6 +273,6 @@ export default ${language.replace("-", "")};
 `;
 
     fs.writeFileSync(outputPath, fileContent);
-    console.log(`✅ ${language} 번역 파일이 저장되었습니다: ${outputPath}`);
+    console.log(`✅ Translation file saved: ${outputPath}`);
   }
 }

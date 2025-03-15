@@ -145,8 +145,8 @@ export class DeepLTranslator extends Translator {
     context?: string
   ): Promise<TranslationResult> {
     try {
-      // DeepL 번역시 변수 패턴을 보존하기 위한 특수 처리
-      // <v> 태그로 감싸서 번역에서 제외
+      // Special handling to preserve variable patterns during DeepL translation
+      // Wrap with <v> tags to exclude from translation
       const textToTranslate = text.replace(
         this.VARIABLE_PATTERN,
         (match) => `<v>${match}</v>`
@@ -170,9 +170,9 @@ export class DeepLTranslator extends Translator {
           source_lang: this.options.autoDetect
             ? undefined
             : this.formatLanguageCodeForApi(this.options.sourceLanguage),
-          // XML 태그 처리 옵션 추가
+          // Add XML tag handling option
           tag_handling: "xml",
-          // 번역에서 제외할 태그 설정
+          // Set tags to exclude from translation
           ignore_tags: ["v"],
         },
         {
@@ -197,8 +197,8 @@ export class DeepLTranslator extends Translator {
         }
       }
 
-      // v 태그 제거 후 변수 형식 복원
-      // 숫자가 추가된 경우를 처리하기 위한 정규식
+      // Remove v tags and restore variable format
+      // Use regex to handle cases where numbers are added
       translatedText = translatedText.replace(
         /<v>\{([^}]+)\}<\/v>(\d+)?/g,
         (_: string, varName: string) => {
