@@ -113,16 +113,21 @@ export class TranslationManager {
       }
 
       try {
-        console.log(`📝 Translating: "${key}" -> "${text}"`);
-
         // Use key as context for translation
         const result = await translator.translate(text, key);
         translations[key] = result.translatedText;
         newKeysCount++;
 
-        console.log(`✅ Translated: "${result.translatedText}"`);
+        console.log(`✅ Translated: "${text}" -> "${result.translatedText}"`);
       } catch (error) {
         console.error(`❌ Translation failed: ${error}`);
+        console.log(
+          `🛟 Saving... ${Object.keys(translations).length} items saved...`
+        );
+
+        // Save the current translations
+        await this.saveTranslation(targetLanguage, translations);
+        console.log(`💾 Saved: ${targetLanguage}.ts file.`);
         console.error("🥷 Please retry translation.");
         process.exit(1);
       }
