@@ -1,6 +1,6 @@
 {
   "name": "ts-translator-auto-core",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "DeepL translation management for multiple languages",
   "type": "module",
   "main": "dist/cjs/index.js",

@@ -1,5 +1,5 @@
-import { DeepLTranslator } from "../translator";
-import { LanguageCode, TranslationOptions } from "../types";
+import { DeepLTranslator } from "./translator";
+import { LanguageCode, TranslationOptions } from "./types";
 import fs from "fs";
 import path from "path";
 
