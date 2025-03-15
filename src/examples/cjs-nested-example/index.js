@@ -35,6 +35,7 @@ const CONFIG = {
       "zh-Hans", // 중국어 (간체)
       "fr", // 프랑스어
       "de", // 독일어
+      "ar", // 아랍어
     ],
     sourceLanguage: "ko", // 소스 언어
     autoDetect: false, // 자동 언어 감지

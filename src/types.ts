@@ -138,6 +138,10 @@ export interface TranslationOptions {
   maxRetries?: number;
   /** Base delay in milliseconds before retrying after a failure */
   retryDelay?: number;
+  /** Whether to use context for translation (if provided) */
+  useContext?: boolean;
+  /** Whether to use only the value for translation (ignoring context) */
+  valueOnly?: boolean;
 }
 
 /**

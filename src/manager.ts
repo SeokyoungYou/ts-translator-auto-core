@@ -26,6 +26,8 @@ export interface TranslationConfig {
     autoDetect: boolean;
     useCache: boolean;
     skipExistingKeys: boolean;
+    useContext?: boolean; // 번역 시 컨텍스트 사용 여부
+    valueOnly?: boolean; // 값만 사용하여 번역할지 여부
   };
 }
 
@@ -88,7 +90,26 @@ export class TranslationManager {
       targetLanguage: targetLanguage,
       autoDetect: this.config.translation.autoDetect,
       useCache: this.config.translation.useCache,
+      useContext: this.config.translation.useContext,
+      valueOnly: this.config.translation.valueOnly,
     };
+
+    // 아랍어(ar)인 경우 기본값으로 valueOnly: true, useContext: false 설정
+    // 설정 파일에서 명시적으로 지정한 경우에는 그 값을 우선함
+    const isArabic =
+      targetLanguage === "ar" || targetLanguage.toLowerCase().startsWith("ar");
+    if (isArabic) {
+      if (this.config.translation.useContext === undefined) {
+        options.useContext = false;
+        console.log(`ℹ️ Arabic translation: Context disabled by default`);
+      }
+      if (this.config.translation.valueOnly === undefined) {
+        options.valueOnly = true;
+        console.log(
+          `ℹ️ Arabic translation: Value-only mode enabled by default`
+        );
+      }
+    }
 
     // Create DeepL translator
     const translator = new DeepLTranslator(options, this.apiKey);
@@ -134,6 +155,26 @@ export class TranslationManager {
         console.log(`💾 Saved: ${targetLanguage}.ts file.`);
         console.error("🥷 Please retry translation.");
         process.exit(1);
+      }
+    }
+
+    // 아랍어인 경우, 저장 전에 한 번 더 특수 패턴 정리
+    if (isArabic) {
+      console.log(`🧹 Final cleanup of Arabic translations before saving...`);
+      for (const key of Object.keys(translations)) {
+        const value = translations[key];
+        if (typeof value === "string") {
+          // RTL 마커 제거
+          let cleanedValue = value.replace(/\u200F/g, "");
+          // 특수 패턴 정리
+          cleanedValue = cleanedValue.replace(/_\d+__/g, "");
+          cleanedValue = cleanedValue.replace(/_개/g, "");
+
+          // 중복된 공백 제거 및 트림
+          cleanedValue = cleanedValue.replace(/\s+/g, " ").trim();
+
+          translations[key] = cleanedValue;
+        }
       }
     }
 
@@ -303,7 +344,7 @@ export class TranslationManager {
         }
 
         console.log(
-          `�� Loaded existing ${filenameLanguage}${fileExtension} file. (${
+          `🔄 Loaded existing ${filenameLanguage}${fileExtension} file. (${
             Object.keys(data).length
           } keys)`
         );
@@ -311,7 +352,32 @@ export class TranslationManager {
         // 중첩 구조 확인 및 평탄화
         if (hasNestedStructure(data)) {
           console.log(`🔄 Nested structure detected. Flattening...`);
-          return flattenObject(data);
+          data = flattenObject(data);
+        }
+
+        // 아랍어인 경우, 기존 번역에서 RTL 마커와 특수 패턴 정리
+        const isArabic = language === "ar";
+        if (isArabic) {
+          console.log(
+            `🧹 Cleaning up RTL markers and special patterns in Arabic translations...`
+          );
+          const cleanedData: Record<string, string> = {};
+
+          for (const [key, value] of Object.entries(data)) {
+            if (typeof value === "string") {
+              let cleanedValue = value;
+              // RTL 마커 제거
+              cleanedValue = cleanedValue.replace(/\u200F/g, "");
+              // 이상한 패턴 정리
+              cleanedValue = cleanedValue.replace(/_\d+__/g, "");
+              cleanedValue = cleanedValue.replace(/_개/g, "");
+              cleanedData[key] = cleanedValue;
+            } else {
+              cleanedData[key] = value as string;
+            }
+          }
+
+          return cleanedData;
         }
 
         return data as Record<string, string>;

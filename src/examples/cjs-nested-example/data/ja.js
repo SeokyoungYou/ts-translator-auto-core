@@ -10,14 +10,14 @@ const ja = {
   "user": {
     "greeting": "{username} さん、はじめまして。",
     "search": {
-      "results": "検索結果：{results}件見つかりました。"
+      "results": "検索結果：件見つかりました。 {results}"
     }
   },
   "items": {
-    "selected": "{count}アイテムが選択されました。"
+    "selected": "{count}個のアイテムが選択されました。"
   },
   "order": {
-    "confirmation": "注文が完了しました。注文番号： {orderNumber}"
+    "confirmation": "注文が完了しました。注文番号: {orderNumber}"
   },
   "error": {
     "message": "エラーが発生しました：{errorType}"

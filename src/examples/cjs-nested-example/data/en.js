@@ -10,7 +10,7 @@ const en = {
   "user": {
     "greeting": "{username}Hello, good evening",
     "search": {
-      "results": "search results: {results} hits found"
+      "results": "search results: {results} found"
     }
   },
   "items": {
@@ -25,7 +25,7 @@ const en = {
   "total": {
     "count": "total {count} pieces"
   },
-  "thankyou": "thank you",
+  "thankyou": "Thank you",
   "added": {
     "count": "Number of added: {count}개"
   },
