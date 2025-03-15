@@ -1,6 +1,6 @@
 {
   "name": "ts-translator-auto-core",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "DeepL translation management for multiple languages",
   "type": "module",
   "main": "dist/cjs/index.cjs",
@@ -31,6 +31,10 @@
     "localization"
   ],
   "author": "SeokyoungYou",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SeokyoungYou/ts-translator-auto-core"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.10.0",

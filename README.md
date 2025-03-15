@@ -2,6 +2,8 @@
 
 A TypeScript library for automating translations across multiple languages using various translation APIs.
 
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue.svg)](https://github.com/SeokyoungYou/ts-translator-auto-core)
+
 ## Key Features
 
 - Variable pattern preservation in translations (e.g., `{name}`)
