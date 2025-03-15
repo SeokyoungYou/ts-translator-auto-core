@@ -63,12 +63,14 @@ function printAvailableLanguages(): void {
  * @param text Text to translate
  * @param targetLang Target language code
  * @param sourceLang Source language code
+ * @param context Optional context (key) to provide better translation context
  * @returns Translated text
  */
 async function translateText(
   text: string,
   targetLang: TargetLanguage,
-  sourceLang: LanguageCode = "ko"
+  sourceLang: LanguageCode = "ko",
+  context?: string
 ): Promise<string> {
   try {
     // Convert variables to <keep>variable</keep> format
@@ -77,10 +79,17 @@ async function translateText(
       (match) => `<keep>${match}</keep>`
     );
 
+    // Create text with context if provided
+    let textWithContext = textToTranslate;
+    if (context) {
+      // Prepend context for translation but with delimiter
+      textWithContext = `${context} [CONTEXT] ${textToTranslate}`;
+    }
+
     const response = await axios.post(
       DEEPL_API_URL,
       {
-        text: [textToTranslate],
+        text: [textWithContext],
         target_lang: targetLang.toUpperCase(),
         source_lang: sourceLang.toUpperCase(),
         // Add XML handling options
@@ -96,8 +105,21 @@ async function translateText(
       }
     );
 
-    // Remove <keep> tags and restore original variable format
+    // Get translated text
     let translatedText = response.data.translations[0].text;
+
+    // If context was provided, remove the translated context portion
+    if (context) {
+      // Find the [CONTEXT] delimiter in the translated text and remove everything before it
+      const contextDelimIndex = translatedText.indexOf("[CONTEXT]");
+      if (contextDelimIndex !== -1) {
+        translatedText = translatedText
+          .substring(contextDelimIndex + "[CONTEXT]".length)
+          .trim();
+      }
+    }
+
+    // Remove <keep> tags and restore original variable format
     translatedText = translatedText.replace(/<keep>|<\/keep>/g, "");
 
     console.log(`✅ "${text}" => "${translatedText}"`);
@@ -161,7 +183,13 @@ async function generateTranslationFile(
       }
 
       console.log(`🔄 Translating new key: ${key}`);
-      const translatedText = await translateText(value as string, lang, "ko");
+      // Pass the key as context for better translation results
+      const translatedText = await translateText(
+        value as string,
+        lang,
+        "ko",
+        key
+      );
       translations[key] = translatedText;
       newKeysCount++;
     }

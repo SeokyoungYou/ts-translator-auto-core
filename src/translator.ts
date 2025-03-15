@@ -34,9 +34,13 @@ export abstract class Translator {
   /**
    * Translate text
    * @param text Text to translate
+   * @param context Optional context key to provide more context for translation
    * @returns Translation result promise
    */
-  public async translate(text: string): Promise<TranslationResult> {
+  public async translate(
+    text: string,
+    context?: string
+  ): Promise<TranslationResult> {
     if (!text || text.trim() === "") {
       throw new Error("Text to translate is empty.");
     }
@@ -47,14 +51,18 @@ export abstract class Translator {
       );
     }
 
-    return this.translateText(text);
+    return this.translateText(text, context);
   }
 
   /**
    * Implement actual translation logic (implemented in subclasses)
    * @param text Text to translate
+   * @param context Optional context key to provide more context for translation
    */
-  protected abstract translateText(text: string): Promise<TranslationResult>;
+  protected abstract translateText(
+    text: string,
+    context?: string
+  ): Promise<TranslationResult>;
 
   /**
    * Return list of supported languages
@@ -67,7 +75,10 @@ export abstract class Translator {
  * In practice, you should use an external API or implement specific translation logic.
  */
 export class DummyTranslator extends Translator {
-  protected async translateText(text: string): Promise<TranslationResult> {
+  protected async translateText(
+    text: string,
+    context?: string
+  ): Promise<TranslationResult> {
     // In a real implementation, you would call an external API, etc.
     // This example provides a simple dummy implementation.
     return {
@@ -126,9 +137,13 @@ export class DeepLTranslator extends Translator {
   /**
    * Translate text using DeepL API
    * @param text Text to translate
+   * @param context Optional context key to provide more context for translation
    * @returns Translation result
    */
-  protected async translateText(text: string): Promise<TranslationResult> {
+  protected async translateText(
+    text: string,
+    context?: string
+  ): Promise<TranslationResult> {
     try {
       // Convert variables to <keep>variable</keep> format to exclude from translation
       const textToTranslate = text.replace(
@@ -136,10 +151,18 @@ export class DeepLTranslator extends Translator {
         (match) => `<keep>${match}</keep>`
       );
 
+      // Create translation text with context if provided
+      let textWithContext = textToTranslate;
+      if (context) {
+        // Prepend context for translation but keep it separate with delimiter
+        // Format: "context [CONTEXT_DELIM] text_to_translate"
+        textWithContext = `${context} [CONTEXT] ${textToTranslate}`;
+      }
+
       const response = await axios.post(
         this.apiUrl,
         {
-          text: [textToTranslate],
+          text: [textWithContext],
           target_lang: this.formatLanguageCodeForApi(
             this.options.targetLanguage
           ),
@@ -159,8 +182,21 @@ export class DeepLTranslator extends Translator {
         }
       );
 
-      // Remove <keep> tags and restore original variable format
+      // Get translated text from response
       let translatedText = response.data.translations[0].text;
+
+      // If context was provided, remove the translated context portion
+      if (context) {
+        // Find the [CONTEXT] delimiter in the translated text and remove everything before it
+        const contextDelimIndex = translatedText.indexOf("[CONTEXT]");
+        if (contextDelimIndex !== -1) {
+          translatedText = translatedText
+            .substring(contextDelimIndex + "[CONTEXT]".length)
+            .trim();
+        }
+      }
+
+      // Remove <keep> tags and restore original variable format
       translatedText = translatedText.replace(/<keep>|<\/keep>/g, "");
 
       return {

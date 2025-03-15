@@ -26,25 +26,51 @@ async function main() {
   // Create DeepL translator
   const translator = new DeepLTranslator(options, apiKey);
 
-  // Example texts to translate
-  const textsToTranslate = [
-    "안녕하세요, 오늘은 날씨가 좋네요.",
-    "변수 {name}는 중요한 값입니다.",
-    "이 {product}의 가격은 {price}원입니다.",
+  // Example translations with context
+  const translationsWithContext = [
+    { key: "item_count", text: "{count}개", expectedResult: "{count} items" },
+    { key: "dog_count", text: "{count}마리", expectedResult: "{count} dogs" },
+    {
+      key: "person_count",
+      text: "{count}명",
+      expectedResult: "{count} people",
+    },
+    {
+      key: "delete_confirmation",
+      text: "정말 삭제하시겠습니까?",
+      expectedResult: "Are you sure you want to delete?",
+    },
   ];
 
-  // Translate each text and print results
-  for (const text of textsToTranslate) {
+  console.log("🧪 Testing translation with context (key as context):\n");
+
+  // Translate each text with and without context for comparison
+  for (const { key, text, expectedResult } of translationsWithContext) {
     try {
-      console.log(`🔄 Translating: "${text}"`);
-      const result = await translator.translate(text);
-      console.log(`✅ Translation result: "${result.translatedText}"`);
+      console.log(`🔑 Key: "${key}"`);
+      console.log(`📝 Original text: "${text}"`);
+
+      // Translate without context
+      console.log(`🔄 Translating without context...`);
+      const resultWithoutContext = await translator.translate(text);
+      console.log(
+        `✅ Without context: "${resultWithoutContext.translatedText}"`
+      );
+
+      // Translate with context (using key)
+      console.log(`🔄 Translating with context (key: ${key})...`);
+      const resultWithContext = await translator.translate(text, key);
+      console.log(`✅ With context: "${resultWithContext.translatedText}"`);
+
+      // Show expected result for comparison
+      console.log(`🎯 Expected result: "${expectedResult}"`);
+      console.log("-------------------------------------------\n");
     } catch (error) {
       console.error(`❌ Translation failed: ${error}`);
     }
   }
 
-  console.log("✨ Translation completed.");
+  console.log("✨ Translation tests completed.");
 }
 
 // Run script

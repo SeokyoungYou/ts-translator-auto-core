@@ -16,6 +16,7 @@ npm install ts-translator-auto-core
 - Type safety support
 - Support for all languages supported by DeepL (33 languages)
 - Provides language translation automation tools
+- Context-based translation using keys for better translation results
 
 ## Supported Languages
 
@@ -105,6 +106,34 @@ async function main() {
 main().catch(console.error);
 ```
 
+### Context-Based Translation
+
+The translator can use a key or context string to improve translation accuracy. This is especially helpful for ambiguous terms or counting units:
+
+```typescript
+import { DeepLTranslator } from "ts-translator-auto-core";
+import { TranslationOptions } from "ts-translator-auto-core/types";
+
+async function main() {
+  const options = { sourceLanguage: "ko", targetLanguage: "en" };
+  const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
+
+  // Without context - might translate incorrectly
+  const result1 = await translator.translate("{count}개");
+  console.log(result1.translatedText); // Could be "{count} dog" or "{count}"
+
+  // With context - provides better translation
+  const result2 = await translator.translate("{count}개", "item_count");
+  console.log(result2.translatedText); // "{count} items"
+
+  // Another example with context
+  const result3 = await translator.translate("{count}명", "person_count");
+  console.log(result3.translatedText); // "{count} people"
+}
+```
+
+The context is used only for translation guidance and is not included in the translated output.
+
 ### Multiple Language Translation Example
 
 ```typescript
@@ -163,6 +192,8 @@ npx ts-node src/examples/translate-files.ts --lang en,ja,fr
 # Generate translations from a specific source file
 npx ts-node src/examples/translate-files.ts --source lang/custom/ko --output lang/custom
 ```
+
+The translation automation tool automatically uses the key names as context for better translations.
 
 ## Supported Translators
 
