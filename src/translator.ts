@@ -14,7 +14,7 @@ const DEFAULT_OPTIONS: Partial<TranslationOptions> = {
   autoDetect: true,
   useCache: true,
   maxLength: 5000,
-  delayBetweenRequests: 500,
+  delayBetweenRequests: 1000,
   maxRetries: 3,
   retryDelay: 2000,
 };
