@@ -19,7 +19,7 @@ npm install ts-translator-auto-core
 
 ## Quick Start
 
-### 1. Environment Setup
+### Environment Setup
 
 Create an `.env` file with your DeepL API key:
 
@@ -33,147 +33,82 @@ Then add your API key:
 DEEPL_API_KEY=your_deepl_api_key_here
 ```
 
-### 2. Dual Module System Support
+### Example Projects
 
-This package supports both ESM and CommonJS module systems:
+This library includes examples that can be used in various module system environments:
 
-#### ESM (ECMAScript Modules)
+##### CommonJS Example (src/examples/cjs-example)
 
-```javascript
-// Using ESM import syntax
-import { DeepLTranslator, TranslationManager } from "ts-translator-auto-core";
-
-const translator = new DeepLTranslator(
-  {
-    sourceLanguage: "ko",
-    targetLanguage: "en",
-    autoDetect: false,
-  },
-  "your_api_key"
-);
-```
-
-#### CommonJS
+An example using Node.js CommonJS module system.
 
 ```javascript
-// Using CommonJS require syntax
-const {
-  DeepLTranslator,
-  TranslationManager,
-} = require("ts-translator-auto-core");
+// index.js
+const { TranslationManager } = require("ts-translator-auto-core");
 
-const translator = new DeepLTranslator(
-  {
-    sourceLanguage: "ko",
-    targetLanguage: "en",
-    autoDetect: false,
-  },
-  "your_api_key"
-);
+// Create TranslationManager instance
+const translationManager = new TranslationManager(CONFIG, apiKey);
+
+// Execute translation for all languages
+await translationManager.translateAll();
 ```
 
-#### Module Compatibility Test
-
-You can test module compatibility with the provided example scripts:
+How to run:
 
 ```bash
-# Test ESM compatibility
-npm run test:esm
-
-# Test CommonJS compatibility
-npm run test:cjs
-
-# Test both module systems
-npm run test:modules
+cd src/examples/cjs-example
+npm install
+node index.js
 ```
 
-### 3. Batch Translation with TranslationManager
+##### ESM Example (src/examples/esm-example)
 
-Translate files with multiple languages at once:
+A TypeScript example using ECMAScript module system.
 
 ```typescript
+// index.ts
 import {
-  LanguageCode,
   TranslationManager,
   TranslationConfig,
+  LanguageCode,
 } from "ts-translator-auto-core";
-import dotenv from "dotenv";
-import path from "path";
 
-dotenv.config();
+// Create TranslationManager instance with ESM module path workaround
+const translationManager = new TranslationManager(CONFIG, apiKey);
 
-const CONFIG: TranslationConfig = {
-  input: {
-    directory: path.join(__dirname, "data"),
-    file: "ko.ts",
-    fileExportName: "default",
-  },
-  output: {
-    directory: path.join(__dirname, "data"),
-    prettyPrint: true,
-  },
-  translation: {
-    targetLanguages: [
-      "en", // English
-      "ja", // Japanese
-      "zh-Hans", // Chinese (Simplified)
-      "fr", // French
-      "de", // German
-    ] as LanguageCode[],
-    sourceLanguage: "ko" as LanguageCode,
-    autoDetect: false,
-    useCache: true,
-    skipExistingKeys: true,
-  },
-};
-
-async function main() {
-  const apiKey = process.env.DEEPL_API_KEY;
-  if (!apiKey) {
-    console.error("❌ DeepL API key is not configured in .env file");
-    process.exit(1);
-  }
-
-  try {
-    const translationManager = new TranslationManager(CONFIG, apiKey);
-    await translationManager.translateAll();
-    console.log("\n✨ All language translations completed.");
-  } catch (error) {
-    console.error(`❌ Error: ${error}`);
-    process.exit(1);
-  }
-}
-
-main().catch(console.error);
+// Execute translation for all languages
+await translationManager.translateAll();
 ```
 
-### 4. Command-Line Translation Tool
-
-The library includes a CLI tool for translation:
-
-Run the translation tool via npm script by adding to your package.json:
-
-```json
-"scripts": {
-  "translate-languages": "node -r ts-node/register src/examples/translate-languages.js"
-}
-```
-
-Then run:
+How to run:
 
 ```bash
-npm run translate-languages
+cd src/examples/esm-example
+npm install
+npm run translate
 ```
 
-### 5. Output Results
+##### Dual Module System Example (src/examples/module-example)
 
-Translation output is organized by language:
+An example that works in both ESM and CommonJS environments.
 
-- `en.ts` - English
-- `ja.ts` - Japanese
-- `zhHans.ts` - Chinese (Simplified)
-- `fr.ts` - French
-- `de.ts` - German
+```typescript
+// package.json with "type": "module" setting
+{
+  "name": "ts-translator-module-example",
+  "type": "module",
+  "scripts": {
+    "translate": "tsx index.ts"
+  }
+}
+```
+
+How to run:
+
+```bash
+cd src/examples/module-example
+npm install
+npm run translate
+```
 
 ## Supported Translators
 
