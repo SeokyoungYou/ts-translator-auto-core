@@ -8,6 +8,8 @@ const ko = {
   "search.results": "검색 결과: {results}건 발견됨",
   "total.count": "총 {count}개",
   thankyou: "감사합니다",
+  "added.count": "추가된 개수: {count}개",
+  "delete.confirmation": "정말 삭제하시겠습니까?",
 } as const;
 
 export default ko;
