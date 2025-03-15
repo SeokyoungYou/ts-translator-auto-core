@@ -1,0 +1,33 @@
+{
+  "name": "ts-translator-auto-core",
+  "version": "0.1.0",
+  "description": "TypeScript 기반 번역기의 코어 패키지",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc",
+    "test": "jest",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "translator",
+    "typescript",
+    "i18n",
+    "localization"
+  ],
+  "author": "SeokyoungYou",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.10",
+    "jest": "^29.7.0",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.6",
+    "typescript": "^5.8.2"
+  }
+}
