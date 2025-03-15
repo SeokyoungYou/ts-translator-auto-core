@@ -6,6 +6,7 @@
 
 const en = {
   "hello": "Hello",
+  "welcome": "Welcome",
   "user.greeting": "{username}, good evening",
   "items.selected": "{count} items have been selected",
   "order.confirmation": "Your order has been completed. Order number: {orderNumber}",
@@ -14,8 +15,7 @@ const en = {
   "total.count": "A total of {count}pieces",
   "thankyou": "Thank you",
   "added.count": "Number of added: {count}Count.",
-  "delete.confirmation": "Are you sure you want to delete this?",
-  "welcome": "Welcome"
+  "delete.confirmation": "Are you sure you want to delete this?"
 } as const;
 
 export default en;

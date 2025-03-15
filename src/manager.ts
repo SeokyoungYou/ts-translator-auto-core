@@ -123,19 +123,19 @@ export class TranslationManager {
         console.log(`✅ Translated: "${result.translatedText}"`);
       } catch (error) {
         console.error(`❌ Translation failed: ${error}`);
-        // Keep original text if translation fails
-        translations[key] = text;
+        console.error("🥷 Please retry translation.");
+        process.exit(1);
       }
     }
 
     // Print translation statistics
-    console.log(`\n📊 Translation statistics:`);
-    console.log(`   - Total keys: ${Object.keys(sourceData).length}`);
-    console.log(`   - Newly translated keys: ${newKeysCount}`);
-    console.log(`   - Skipped keys: ${skippedKeysCount}`);
-    console.log(
-      `   - Final translation file keys: ${Object.keys(translations).length}`
-    );
+    // console.log(`\n📊 Translation statistics:`);
+    // console.log(`   - Total keys: ${Object.keys(sourceData).length}`);
+    // console.log(`   - Newly translated keys: ${newKeysCount}`);
+    // console.log(`   - Skipped keys: ${skippedKeysCount}`);
+    // console.log(
+    //   `   - Final translation file keys: ${Object.keys(translations).length}`
+    // );
 
     // Save to file
     await this.saveTranslation(targetLanguage, translations);
