@@ -5,7 +5,7 @@ import {
   LANGUAGE_CODE_MAPPING,
   LANGUAGE_NAMES,
 } from "./types";
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 
 /**
  * Default translation options
@@ -14,6 +14,9 @@ const DEFAULT_OPTIONS: Partial<TranslationOptions> = {
   autoDetect: true,
   useCache: true,
   maxLength: 5000,
+  delayBetweenRequests: 500,
+  maxRetries: 3,
+  retryDelay: 2000,
 };
 
 /**
@@ -101,6 +104,8 @@ export class DeepLTranslator extends Translator {
   private apiKey: string;
   private apiUrl: string;
   private readonly VARIABLE_PATTERN = /\{([^}]+)\}/g;
+  private lastRequestTime: number = 0;
+  private currentDelay: number;
 
   /**
    * DeepL Translator constructor
@@ -121,6 +126,9 @@ export class DeepLTranslator extends Translator {
 
     this.apiKey = apiKey;
     this.apiUrl = apiUrl;
+    this.currentDelay =
+      this.options.delayBetweenRequests ||
+      DEFAULT_OPTIONS.delayBetweenRequests!;
   }
 
   /**
@@ -132,6 +140,105 @@ export class DeepLTranslator extends Translator {
     // DeepL API requires language codes in a specific format
     // en-GB → EN-GB, zh-Hans → ZH, pt-BR → PT-BR, etc.
     return langCode.toUpperCase();
+  }
+
+  /**
+   * 요청 사이의 딜레이를 적용하는 함수
+   * @private
+   */
+  private async applyRequestDelay(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+
+    if (this.lastRequestTime && timeSinceLastRequest < this.currentDelay) {
+      const waitTime = this.currentDelay - timeSinceLastRequest;
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * DeepL API 요청 함수
+   * @param textWithContext 번역할 텍스트 (컨텍스트 포함)
+   * @param retryCount 현재 재시도 횟수
+   * @returns API 응답
+   */
+  private async makeApiRequest(
+    textWithContext: string,
+    retryCount: number = 0
+  ): Promise<AxiosResponse> {
+    try {
+      // 요청 전 딜레이 적용
+      await this.applyRequestDelay();
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          text: [textWithContext],
+          target_lang: this.formatLanguageCodeForApi(
+            this.options.targetLanguage
+          ),
+          source_lang: this.options.autoDetect
+            ? undefined
+            : this.formatLanguageCodeForApi(this.options.sourceLanguage),
+          // Add XML tag handling option
+          tag_handling: "xml",
+          // Set tags to exclude from translation
+          ignore_tags: ["v"],
+        },
+        {
+          headers: {
+            Authorization: `DeepL-Auth-Key ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // 성공 시 현재 딜레이를 기본 값으로 재설정
+      this.currentDelay =
+        this.options.delayBetweenRequests ||
+        DEFAULT_OPTIONS.delayBetweenRequests!;
+
+      return response;
+    } catch (error: unknown) {
+      const maxRetries = this.options.maxRetries || DEFAULT_OPTIONS.maxRetries!;
+
+      if (axios.isAxiosError(error) && retryCount < maxRetries) {
+        const axiosError = error as AxiosError;
+
+        // 429 에러 (Too Many Requests) 처리
+        if (axiosError.response?.status === 429) {
+          // 딜레이 시간 증가 (지수 백오프)
+          this.currentDelay = this.currentDelay * 2;
+          console.warn(
+            `DeepL API rate limit reached. Retrying in ${this.currentDelay}ms...`
+          );
+
+          // 기다린 후 재시도
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.currentDelay)
+          );
+          return this.makeApiRequest(textWithContext, retryCount + 1);
+        }
+
+        // 그 외 일시적인 오류 (5xx) 처리
+        if (axiosError.response?.status && axiosError.response.status >= 500) {
+          const retryDelay =
+            this.options.retryDelay || DEFAULT_OPTIONS.retryDelay!;
+          console.warn(
+            `DeepL API server error. Retrying in ${retryDelay}ms...`
+          );
+
+          // 기다린 후 재시도
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          return this.makeApiRequest(textWithContext, retryCount + 1);
+        }
+      }
+
+      // 재시도 횟수 초과 또는 재시도 불가능한 오류
+      throw error;
+    }
   }
 
   /**
@@ -160,28 +267,8 @@ export class DeepLTranslator extends Translator {
         textWithContext = `${context} [CONTEXT] ${textToTranslate}`;
       }
 
-      const response = await axios.post(
-        this.apiUrl,
-        {
-          text: [textWithContext],
-          target_lang: this.formatLanguageCodeForApi(
-            this.options.targetLanguage
-          ),
-          source_lang: this.options.autoDetect
-            ? undefined
-            : this.formatLanguageCodeForApi(this.options.sourceLanguage),
-          // Add XML tag handling option
-          tag_handling: "xml",
-          // Set tags to exclude from translation
-          ignore_tags: ["v"],
-        },
-        {
-          headers: {
-            Authorization: `DeepL-Auth-Key ${this.apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // API 요청 보내기 (재시도 로직 포함)
+      const response = await this.makeApiRequest(textWithContext);
 
       // Get translated text from response
       let translatedText = response.data.translations[0].text;

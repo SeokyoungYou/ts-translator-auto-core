@@ -12,6 +12,7 @@ A TypeScript library for automating translations across multiple languages using
 - Support for all 33 languages available in DeepL API
 - Translation automation tools for batch processing
 - **Dual module system support (ESM and CommonJS)**
+- **Rate limiting protection with automatic retry and delay**
 
 ## Installation
 
@@ -144,3 +145,46 @@ All 33 languages supported by DeepL API:
 ## License
 
 MIT
+
+## Advanced Configuration
+
+### Rate Limiting and API Protection
+
+To avoid rate limiting errors (429 Too Many Requests), you can configure delay between requests and automatic retries:
+
+```typescript
+import { TranslationManager, DeepLTranslator } from "ts-translator-auto-core";
+
+// Create translator with rate limiting configuration
+const translator = new DeepLTranslator(
+  {
+    sourceLanguage: "en",
+    targetLanguage: "ko",
+    // Add delay between requests (milliseconds)
+    delayBetweenRequests: 1000,
+    // Configure retry behavior
+    maxRetries: 3,
+    retryDelay: 2000,
+  },
+  apiKey
+);
+
+// Or configure through TranslationManager
+const translationManager = new TranslationManager(
+  {
+    // ...your config
+    translationOptions: {
+      delayBetweenRequests: 1000,
+      maxRetries: 3,
+      retryDelay: 2000,
+    },
+  },
+  apiKey
+);
+```
+
+The system automatically handles:
+
+- Maintaining delay between consecutive API requests
+- Exponential backoff for rate limit errors (429)
+- Automatic retry for temporary server errors (5xx)

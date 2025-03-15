@@ -132,6 +132,12 @@ export interface TranslationOptions {
   maxLength?: number;
   /** Whether to use caching */
   useCache?: boolean;
+  /** Delay between consecutive requests in milliseconds */
+  delayBetweenRequests?: number;
+  /** Maximum number of retry attempts on failure */
+  maxRetries?: number;
+  /** Base delay in milliseconds before retrying after a failure */
+  retryDelay?: number;
 }
 
 /**
