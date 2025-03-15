@@ -2,6 +2,7 @@ import { DeepLTranslator } from "./translator";
 import { LanguageCode, TranslationOptions } from "./types";
 import fs from "fs";
 import path from "path";
+import { flattenObject, unflattenObject, hasNestedStructure } from "./utils";
 
 /**
  * Type definition for translation configuration
@@ -15,6 +16,7 @@ export interface TranslationConfig {
   output: {
     directory: string;
     prettyPrint: boolean;
+    preserveNestedStructure?: boolean; // 중첩 구조 유지 여부
   };
   translation: {
     targetLanguages: LanguageCode[];
@@ -160,14 +162,56 @@ export class TranslationManager {
         throw new Error(`Input file not found: ${inputFilePath}`);
       }
 
-      // Dynamic import of the file
-      const module = await import(inputFilePath);
-      const data = module[this.config.input.fileExportName];
+      // 확장자 확인
+      const fileExtension = path.extname(inputFilePath);
+
+      let data;
+
+      // CommonJS 모듈 (.js) 처리
+      if (fileExtension === ".js") {
+        try {
+          // Node.js 환경에서 require() 사용
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const moduleData = require(inputFilePath);
+
+          if (this.config.input.fileExportName === "default") {
+            data = moduleData;
+          } else {
+            data = moduleData[this.config.input.fileExportName];
+          }
+        } catch (err) {
+          console.error(`Failed to require JS module: ${err}`);
+          throw err;
+        }
+      }
+      // TypeScript 및 ESM 모듈 처리
+      else {
+        try {
+          const fileUrl = `file://${path.resolve(inputFilePath)}`;
+          const module = await import(fileUrl);
+
+          if (this.config.input.fileExportName === "default") {
+            data = module.default;
+          } else {
+            data = module[this.config.input.fileExportName];
+          }
+        } catch (err) {
+          console.error(`Failed to import TS/ESM module: ${err}`);
+          throw err;
+        }
+      }
 
       if (!data) {
         throw new Error(
-          `Could not find '${this.config.input.fileExportName}' export in the input file.`
+          `Could not find export in the input file. Please check your fileExportName setting.`
         );
+      }
+
+      const hasNested = hasNestedStructure(data);
+
+      if (hasNested) {
+        console.log("🔄 Nested structure detected. Flattening...");
+        return flattenObject(data);
       }
 
       return data as Record<string, string>;
@@ -184,57 +228,98 @@ export class TranslationManager {
     language: LanguageCode
   ): Promise<Record<string, string> | null> {
     try {
+      // 입력 파일의 확장자 추출
+      const fileExtension = path.extname(this.config.input.file);
+
       const targetFilePath = path.join(
         this.config.output.directory,
-        `${language}.ts`
+        `${language}${fileExtension}`
       );
 
       // Return null if file doesn't exist
       if (!fs.existsSync(targetFilePath)) {
-        console.log(`⚠️ No existing ${language}.ts file. Creating new file.`);
+        console.log(
+          `⚠️ No existing ${language}${fileExtension} file. Creating new file.`
+        );
         return null;
       }
 
       // Read file content
       const fileContent = fs.readFileSync(targetFilePath, "utf-8");
 
-      // Find export default statement
-      const exportName = language.replace("-", "");
-      const exportRegex = new RegExp(`export\\s+default\\s+${exportName}`);
+      // 언어 코드를 변수 이름으로 사용
+      const langVarName = language.replace("-", "");
+
+      // Find export statement (파일 형식에 따라 검색 패턴 변경)
+      const exportRegex =
+        fileExtension === ".ts"
+          ? new RegExp(`export\\s+default\\s+${langVarName}`)
+          : new RegExp(`module\\.exports\\s*=\\s*${langVarName}`);
 
       if (!exportRegex.test(fileContent)) {
         console.log(
-          `⚠️ Could not find export default ${exportName} in ${language}.ts file.`
+          `⚠️ Could not find export for ${langVarName} in ${language}${fileExtension} file.`
         );
         return null;
       }
 
       // Dynamic import of the file
       try {
-        // 파일 경로를 URL로 변환하여 임포트 ('file://' 프로토콜 사용)
-        const fileUrl = `file://${path.resolve(targetFilePath)}`;
-        const module = await import(fileUrl);
-        const data = module.default;
+        let data = null;
+
+        // CommonJS 모듈 (.js) 처리
+        if (fileExtension === ".js") {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const moduleData = require(targetFilePath);
+            data = moduleData;
+          } catch (err) {
+            console.error(`Failed to require JS module: ${err}`);
+            return null;
+          }
+        }
+        // TypeScript 및 ESM 모듈 처리
+        else {
+          try {
+            const fileUrl = `file://${path.resolve(targetFilePath)}`;
+            const module = await import(fileUrl);
+            data = module.default;
+          } catch (err) {
+            console.error(`Failed to import TS/ESM module: ${err}`);
+            return null;
+          }
+        }
 
         if (!data) {
           console.log(
-            `⚠️ Could not find default export in ${language}.ts file.`
+            `⚠️ Could not find export in ${language}${fileExtension} file.`
           );
           return null;
         }
 
         console.log(
-          `📖 Loaded existing ${language}.ts file. (${
+          `📖 Loaded existing ${language}${fileExtension} file. (${
             Object.keys(data).length
           } keys)`
         );
+
+        // 중첩 구조 확인 및 평탄화
+        if (hasNestedStructure(data)) {
+          console.log(
+            `🔄 '${language}' 파일에서 중첩된 객체 구조가 감지되었습니다. 평탄화를 진행합니다.`
+          );
+          return flattenObject(data);
+        }
+
         return data as Record<string, string>;
       } catch (importError) {
-        console.log(`⚠️ Failed to import ${language}.ts file: ${importError}`);
+        console.log(
+          `⚠️ Failed to import ${language}${fileExtension} file: ${importError}`
+        );
         return null;
       }
     } catch (error) {
-      console.log(`⚠️ Failed to load existing ${language}.ts file: ${error}`);
+      console.log(`⚠️ Failed to load existing ${language} file: ${error}`);
       return null;
     }
   }
@@ -246,9 +331,12 @@ export class TranslationManager {
     language: LanguageCode,
     translations: Record<string, string>
   ) {
+    // 입력 파일의 확장자 추출
+    const fileExtension = path.extname(this.config.input.file);
+
     const outputPath = path.join(
       this.config.output.directory,
-      `${language}.ts`
+      `${language}${fileExtension}`
     );
 
     // Create directory if it doesn't exist
@@ -259,21 +347,44 @@ export class TranslationManager {
     // Set indentation
     const indentation = this.config.output.prettyPrint ? 2 : 0;
 
-    // Save as TypeScript file
-    const fileContent = `
+    // 중첩 구조 유지 옵션이 활성화된 경우 변환
+    const outputData = this.config.output.preserveNestedStructure
+      ? unflattenObject(translations)
+      : translations;
+
+    // 언어 코드를 변수 이름으로 사용
+    const langVarName = language.replace("-", "");
+
+    // 확장자에 따라 출력 포맷 결정
+    let fileContent;
+    if (fileExtension === ".ts") {
+      fileContent = `
 /**
  * ${language} translations
  * Auto-generated from ${this.config.translation.sourceLanguage} source
  */
 
-const ${language.replace("-", "")} = ${JSON.stringify(
-      translations,
-      null,
-      indentation
-    )} as const;
+const ${langVarName} = ${JSON.stringify(
+        outputData,
+        null,
+        indentation
+      )} as const;
 
-export default ${language.replace("-", "")};
+export default ${langVarName};
 `;
+    } else {
+      // JavaScript 파일 (.js)
+      fileContent = `
+/**
+ * ${language} translations
+ * Auto-generated from ${this.config.translation.sourceLanguage} source
+ */
+
+const ${langVarName} = ${JSON.stringify(outputData, null, indentation)};
+
+module.exports = ${langVarName};
+`;
+    }
 
     fs.writeFileSync(outputPath, fileContent);
     console.log(`✅ Translation file saved: ${outputPath}`);
