@@ -10,6 +10,6 @@ const ko = {
   thankyou: "감사합니다",
   "added.count": "추가된 개수: {count}개",
   "delete.confirmation": "정말 삭제하시겠습니까?",
-} as const;
+};
 
-export default ko;
+module.exports = ko;

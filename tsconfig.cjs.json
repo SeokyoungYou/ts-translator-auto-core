@@ -8,5 +8,6 @@
     "declarationMap": true,
     "emitDeclarationOnly": false,
     "sourceMap": true
-  }
+  },
+  "compilerOptions.outFile": "index.cjs"
 }
