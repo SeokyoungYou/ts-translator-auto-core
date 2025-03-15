@@ -1,6 +1,6 @@
 {
   "name": "ts-translator-auto-core",
-  "version": "1.1.7",
+  "version": "1.1.9",
   "description": "DeepL translation management for multiple languages",
   "type": "module",
   "main": "dist/cjs/index.js",
@@ -42,11 +42,5 @@
   "dependencies": {
     "axios": "^1.6.2",
     "tslib": "^2.6.2"
-  },
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "declaration": true,
-    "declarationMap": true
   }
 }
