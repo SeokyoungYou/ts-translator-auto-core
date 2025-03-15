@@ -6,7 +6,7 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true,
+    "emitDeclarationOnly": false,
     "sourceMap": true
   }
 }

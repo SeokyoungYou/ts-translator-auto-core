@@ -1,7 +1,7 @@
 {
-  "name": "ts-translator-module-example",
+  "name": "ts-translator-esm-example",
   "version": "1.0.0",
-  "description": "Dual module system example for DeepL translation management",
+  "description": "ESM example for DeepL translation management",
   "type": "module",
   "main": "index.ts",
   "scripts": {
