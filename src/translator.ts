@@ -190,91 +190,6 @@ export class DeepLTranslator extends Translator {
   }
 
   /**
-   * DeepL API 요청 함수
-   * @param textWithContext 번역할 텍스트 (컨텍스트 포함)
-   * @param retryCount 현재 재시도 횟수
-   * @returns API 응답
-   */
-  private async makeApiRequest(
-    textWithContext: string,
-    retryCount: number = 0
-  ): Promise<AxiosResponse> {
-    try {
-      // 요청 전 딜레이 적용
-      await this.applyRequestDelay();
-
-      const response = await axios.post(
-        this.apiUrl,
-        {
-          text: [textWithContext],
-          target_lang: this.formatLanguageCodeForApi(
-            this.options.targetLanguage
-          ),
-          source_lang: this.options.autoDetect
-            ? undefined
-            : this.formatLanguageCodeForApi(this.options.sourceLanguage),
-          preserve_formatting: true,
-          // 형식 무시 옵션 추가
-          tag_handling: "xml",
-          outline_detection: false,
-          splitting_tags: [],
-          non_splitting_tags: [],
-        },
-        {
-          headers: {
-            Authorization: `DeepL-Auth-Key ${this.apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Reset delay time
-      this.currentDelay =
-        this.options.delayBetweenRequests ||
-        DEFAULT_OPTIONS.delayBetweenRequests!;
-
-      return response;
-    } catch (error: unknown) {
-      const maxRetries = this.options.maxRetries || DEFAULT_OPTIONS.maxRetries!;
-
-      if (axios.isAxiosError(error) && retryCount < maxRetries) {
-        const axiosError = error as AxiosError;
-
-        // 429 에러 (Too Many Requests) 처리
-        if (axiosError.response?.status === 429) {
-          // 딜레이 시간 증가 (지수 백오프)
-          this.currentDelay = this.currentDelay * 2;
-          console.warn(
-            `DeepL API rate limit reached. Retrying in ${this.currentDelay}ms...`
-          );
-
-          // 기다린 후 재시도
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.currentDelay)
-          );
-          return this.makeApiRequest(textWithContext, retryCount + 1);
-        }
-
-        // 그 외 일시적인 오류 (5xx) 처리
-        if (axiosError.response?.status && axiosError.response.status >= 500) {
-          const retryDelay =
-            this.options.retryDelay || DEFAULT_OPTIONS.retryDelay!;
-          console.warn(
-            `DeepL API server error. Retrying in ${retryDelay}ms...`
-          );
-
-          // 기다린 후 재시도
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-          return this.makeApiRequest(textWithContext, retryCount + 1);
-        }
-      }
-
-      // 재시도 횟수 초과 또는 재시도 불가능한 오류
-      throw error;
-    }
-  }
-
-  /**
    * 텍스트에 특정 언어의 문자가, 해당 언어가 타겟 언어와 일치하는지 확인
    * @param text 검사할 텍스트
    * @param targetLanguage 타겟 언어 코드
@@ -331,75 +246,295 @@ export class DeepLTranslator extends Translator {
   }
 
   /**
-   * 번역 후처리 및 검증
+   * Translation post-processing and validation
    */
-  private postProcessTranslation(
+  private async postProcessTranslation(
     translatedText: string,
     originalText: string,
-    variables: { start: number; end: number; name: string }[]
-  ): string {
-    // 변수 태그를 원래의 변수 형식으로 복원
+    variables: { start: number; end: number; name: string }[],
+    context?: string
+  ): Promise<string> {
+    let processedText = translatedText;
+    let needsReTranslation = false;
+    let autoFixApplied = false;
+    const issues: string[] = [];
+
+    // Restore variable tags to their original variable format
     for (let i = 0; i < variables.length; i++) {
       const varName = variables[i].name;
       const varPattern = new RegExp(
         `${this.VARIABLE_PREFIX}${i}${this.VARIABLE_SUFFIX}`,
         "g"
       );
-      translatedText = translatedText.replace(varPattern, `{${varName}}`);
+      processedText = processedText.replace(varPattern, `{${varName}}`);
     }
 
-    // 번역 결과 검증
-    // 1. 변수 갯수가 유지되는지 확인
+    // Check for partial variable delimiters (like DEEPL_VAR_ without full pattern)
+    if (
+      processedText.includes("DEEPL_VAR_") ||
+      processedText.includes("__DEEPL_VAR")
+    ) {
+      issues.push(`Partial variable delimiters found in translation result`);
+      autoFixApplied = true;
+
+      // Try to match any partial variable identifier pattern
+      const partialVarPattern =
+        /(?:DEEPL_VAR_[a-z0-9]+_\d+__)|(?:__DEEPL_VAR_[a-z0-9]+_\d+)|(?:DEEPL_VAR_\d+__)/g;
+      const matches = processedText.match(partialVarPattern);
+
+      if (matches) {
+        console.warn(
+          `Found partial variable identifiers: ${matches.join(", ")}`
+        );
+
+        // Process each partial identifier
+        for (const match of matches) {
+          // Try to extract index from the partial identifier
+          const indexMatch = match.match(/(\d+)/);
+          if (
+            indexMatch &&
+            indexMatch[1] &&
+            variables[parseInt(indexMatch[1], 10)]
+          ) {
+            const index = parseInt(indexMatch[1], 10);
+            const varName = variables[index].name;
+            processedText = processedText.replace(match, `{${varName}}`);
+            console.info(`Restored partial variable ${match} to {${varName}}`);
+          } else {
+            // If can't determine which variable it is, remove it
+            processedText = processedText.replace(match, "");
+            console.warn(`Removed unidentifiable partial variable: ${match}`);
+          }
+        }
+      }
+
+      // Generic cleanup for any remaining base identifiers
+      processedText = processedText.replace(/DEEPL_VAR_[a-z0-9_]+/g, "");
+    }
+
+    // 1. Check if variable count is maintained
     const originalVarCount = (originalText.match(this.VARIABLE_PATTERN) || [])
       .length;
     const translatedVarCount = (
-      translatedText.match(this.VARIABLE_PATTERN) || []
+      processedText.match(this.VARIABLE_PATTERN) || []
     ).length;
 
     if (originalVarCount !== translatedVarCount) {
-      console.warn(
-        `변수 개수 불일치: 원본=${originalVarCount}, 번역=${translatedVarCount}, 텍스트="${originalText}"`
+      issues.push(
+        `Variable count mismatch: original=${originalVarCount}, translated=${translatedVarCount}`
       );
+
+      // Auto-fix: Restore missing variables
+      if (translatedVarCount < originalVarCount) {
+        // Extract original variables
+        const originalVars: string[] = [];
+        let match;
+        const pattern = new RegExp(this.VARIABLE_PATTERN);
+        let tempText = originalText;
+
+        while ((match = pattern.exec(tempText)) !== null) {
+          originalVars.push(match[0]);
+          // Modify temp text to reset pattern
+          tempText =
+            tempText.substring(0, match.index) +
+            "".padStart(match[0].length, " ") +
+            tempText.substring(match.index + match[0].length);
+        }
+
+        // Find missing variables in translated text
+        const translatedVars: string[] = [];
+        tempText = processedText;
+
+        while ((match = pattern.exec(tempText)) !== null) {
+          translatedVars.push(match[0]);
+          // Modify temp text to reset pattern
+          tempText =
+            tempText.substring(0, match.index) +
+            "".padStart(match[0].length, " ") +
+            tempText.substring(match.index + match[0].length);
+        }
+
+        // Restore missing variables
+        const missingVars = originalVars.filter(
+          (v) => !translatedVars.includes(v)
+        );
+
+        if (missingVars.length > 0) {
+          console.warn(
+            `Restoring missing variables: ${missingVars.join(", ")}`
+          );
+          processedText += ` ${missingVars.join(" ")}`;
+          autoFixApplied = true;
+        } else {
+          // Variables count is different but can't find them
+          needsReTranslation = true;
+        }
+      } else {
+        // Extra variables were added
+        needsReTranslation = true;
+      }
     }
 
-    // 2. 우리 구분자가 남아있는지 확인
+    // 2. Check if our delimiters are still present
     if (
-      translatedText.includes(this.VARIABLE_PREFIX) ||
-      translatedText.includes(this.VARIABLE_SUFFIX) ||
-      translatedText.includes(this.CONTEXT_DELIMITER)
+      processedText.includes(this.VARIABLE_PREFIX) ||
+      processedText.includes(this.VARIABLE_SUFFIX) ||
+      processedText.includes(this.CONTEXT_DELIMITER)
     ) {
-      console.warn(`구분자가 번역 결과에 남아있습니다: "${translatedText}"`);
+      issues.push(`Delimiters found in translation result`);
 
-      // 남아있는 구분자 정리 시도
+      // Clean up remaining delimiters
       for (let i = 0; i < variables.length; i++) {
         const varName = variables[i].name;
         const pattern = new RegExp(
           `${this.VARIABLE_PREFIX}${i}${this.VARIABLE_SUFFIX}`,
           "g"
         );
-        translatedText = translatedText.replace(pattern, `{${varName}}`);
+        processedText = processedText.replace(pattern, `{${varName}}`);
       }
-      translatedText = translatedText.replace(
+      processedText = processedText.replace(
         new RegExp(this.CONTEXT_DELIMITER, "g"),
         ""
       );
+
+      autoFixApplied = true;
     }
 
-    // 3. 언어 혼합 검사
-    const languageCheck = this.isTextInExpectedLanguage(
-      translatedText,
-      this.options.targetLanguage
-    );
+    // Clean up any remaining random ID based variable patterns
+    // This helps catch any partial patterns with the specific random ID
+    if (
+      this.VARIABLE_PREFIX &&
+      processedText.includes(this.VARIABLE_PREFIX.split("_")[0])
+    ) {
+      const basePrefix = this.VARIABLE_PREFIX.split("_")[0];
+      const cleanupPattern = new RegExp(`${basePrefix}_[a-z0-9]+_\\d+__?`, "g");
+      const matches = processedText.match(cleanupPattern);
 
-    if (!languageCheck.valid) {
+      if (matches && matches.length > 0) {
+        issues.push(`Found remaining variable identifiers with instance ID`);
+        console.warn(
+          `Cleaning up remaining ID-based variables: ${matches.join(", ")}`
+        );
+
+        for (const match of matches) {
+          // Try to extract index from the pattern
+          const indexMatch = match.match(/_(\d+)_/);
+          if (
+            indexMatch &&
+            indexMatch[1] &&
+            variables[parseInt(indexMatch[1], 10)]
+          ) {
+            const index = parseInt(indexMatch[1], 10);
+            const varName = variables[index].name;
+            processedText = processedText.replace(match, `{${varName}}`);
+          } else {
+            // If can't determine which variable it is, remove it
+            processedText = processedText.replace(match, "");
+          }
+        }
+
+        autoFixApplied = true;
+      }
+    }
+
+    // If issues were detected, log warnings
+    if (issues.length > 0) {
       console.warn(
-        `언어 혼합 감지: 타겟 언어=${this.options.targetLanguage}, ` +
-          `감지된 언어=[${languageCheck.detectedLanguages.join(", ")}], ` +
-          `텍스트="${translatedText}"`
+        `Translation issues detected: ${issues.join(
+          ", "
+        )}, text="${originalText}"`
       );
+      if (autoFixApplied) {
+        console.info(`Auto-fix applied: "${processedText}"`);
+      }
     }
 
-    return translatedText;
+    return processedText;
+  }
+
+  /**
+   * DeepL API 요청 함수
+   * @param textWithContext 번역할 텍스트 (컨텍스트 포함)
+   * @param retryCount 현재 재시도 횟수
+   * @returns API 응답
+   */
+  private async makeApiRequest(
+    textWithContext: string,
+    retryCount: number = 0
+  ): Promise<AxiosResponse> {
+    try {
+      // Apply delay before request
+      await this.applyRequestDelay();
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          text: [textWithContext],
+          target_lang: this.formatLanguageCodeForApi(
+            this.options.targetLanguage
+          ),
+          source_lang: this.options.autoDetect
+            ? undefined
+            : this.formatLanguageCodeForApi(this.options.sourceLanguage),
+          preserve_formatting: true,
+          // Add format handling options
+          tag_handling: "xml",
+          outline_detection: false,
+          splitting_tags: [],
+          non_splitting_tags: [],
+        },
+        {
+          headers: {
+            Authorization: `DeepL-Auth-Key ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Reset delay time
+      this.currentDelay =
+        this.options.delayBetweenRequests ||
+        DEFAULT_OPTIONS.delayBetweenRequests!;
+
+      return response;
+    } catch (error: unknown) {
+      const maxRetries = this.options.maxRetries || DEFAULT_OPTIONS.maxRetries!;
+
+      if (axios.isAxiosError(error) && retryCount < maxRetries) {
+        const axiosError = error as AxiosError;
+
+        // Handle 429 error (Too Many Requests)
+        if (axiosError.response?.status === 429) {
+          // Increase delay time (exponential backoff)
+          this.currentDelay = this.currentDelay * 2;
+          console.warn(
+            `DeepL API rate limit reached. Retrying in ${this.currentDelay}ms...`
+          );
+
+          // Wait and retry
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.currentDelay)
+          );
+          return this.makeApiRequest(textWithContext, retryCount + 1);
+        }
+
+        // Handle other temporary errors (5xx)
+        if (axiosError.response?.status && axiosError.response.status >= 500) {
+          const retryDelay =
+            this.options.retryDelay || DEFAULT_OPTIONS.retryDelay!;
+          console.warn(
+            `DeepL API server error. Retrying in ${retryDelay}ms...`
+          );
+
+          // Wait and retry
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          return this.makeApiRequest(textWithContext, retryCount + 1);
+        }
+      }
+
+      // Max retries exceeded or non-retryable error
+      throw error;
+    }
   }
 
   /**
@@ -465,10 +600,11 @@ export class DeepLTranslator extends Translator {
       }
 
       // 번역 후처리 및 검증 수행
-      translatedText = this.postProcessTranslation(
+      translatedText = await this.postProcessTranslation(
         translatedText,
         text,
-        variables
+        variables,
+        context
       );
 
       return {
