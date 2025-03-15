@@ -2,20 +2,20 @@ import { DeepLTranslator } from "../translator";
 import { TranslationOptions } from "../types";
 import dotenv from "dotenv";
 
-// .env 파일 로드
+// Load .env file
 dotenv.config();
 
 async function main() {
-  // 환경 변수에서 API 키 가져오기
+  // Get API key from environment variable
   const apiKey = process.env.DEEPL_API_KEY;
 
   if (!apiKey) {
-    console.error("❌ DeepL API 키가 설정되지 않았습니다.");
-    console.error("💡 .env 파일에 DEEPL_API_KEY를 설정해주세요.");
+    console.error("❌ DeepL API key is not set.");
+    console.error("💡 Please set DEEPL_API_KEY in your .env file.");
     process.exit(1);
   }
 
-  // 번역 옵션 설정
+  // Set translation options
   const options: TranslationOptions = {
     sourceLanguage: "ko",
     targetLanguage: "en",
@@ -23,29 +23,29 @@ async function main() {
     useCache: true,
   };
 
-  // DeepL 번역기 생성
+  // Create DeepL translator
   const translator = new DeepLTranslator(options, apiKey);
 
-  // 번역할 텍스트 예시
+  // Example texts to translate
   const textsToTranslate = [
     "안녕하세요, 오늘은 날씨가 좋네요.",
     "변수 {name}는 중요한 값입니다.",
     "이 {product}의 가격은 {price}원입니다.",
   ];
 
-  // 각 텍스트 번역 및 결과 출력
+  // Translate each text and print results
   for (const text of textsToTranslate) {
     try {
-      console.log(`🔄 번역 중: "${text}"`);
+      console.log(`🔄 Translating: "${text}"`);
       const result = await translator.translate(text);
-      console.log(`✅ 번역 결과: "${result.translatedText}"`);
+      console.log(`✅ Translation result: "${result.translatedText}"`);
     } catch (error) {
-      console.error(`❌ 번역 실패: ${error}`);
+      console.error(`❌ Translation failed: ${error}`);
     }
   }
 
-  console.log("✨ 번역이 완료되었습니다.");
+  console.log("✨ Translation completed.");
 }
 
-// 스크립트 실행
-main().catch((error) => console.error("❌ 오류 발생:", error));
+// Run script
+main().catch((error) => console.error("❌ Error occurred:", error));

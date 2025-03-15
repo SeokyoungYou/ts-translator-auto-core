@@ -1,47 +1,47 @@
 /**
- * 번역기에 사용되는 타입 정의
+ * Type definitions used for translators
  */
 
 /**
- * 지원하는 언어 코드
+ * Supported language codes
  */
 export type LanguageCode =
-  | "ar" // 아랍어
-  | "bg" // 불가리아어
-  | "cs" // 체코어
-  | "da" // 덴마크어
-  | "de" // 독일어
-  | "el" // 그리스어
-  | "en" // 영어 (미국)
-  | "en-GB" // 영어 (영국)
-  | "es" // 스페인어
-  | "et" // 에스토니아어
-  | "fi" // 핀란드어
-  | "fr" // 프랑스어
-  | "hu" // 헝가리어
-  | "id" // 인도네시아어
-  | "it" // 이탈리아어
-  | "ja" // 일본어
-  | "ko" // 한국어
-  | "lt" // 리투아니아어
-  | "lv" // 라트비아어
-  | "nb" // 노르웨이어
-  | "nl" // 네덜란드어
-  | "pl" // 폴란드어
-  | "pt" // 포르투갈어 (포르투갈)
-  | "pt-BR" // 포르투갈어 (브라질)
-  | "ro" // 루마니아어
-  | "ru" // 러시아어
-  | "sk" // 슬로바키아어
-  | "sl" // 슬로베니아어
-  | "sv" // 스웨덴어
-  | "tr" // 터키어
-  | "uk" // 우크라이나어
-  | "zh-Hans" // 중국어 (간체)
-  | "zh-Hant"; // 중국어 (번체)
+  | "ar" // Arabic
+  | "bg" // Bulgarian
+  | "cs" // Czech
+  | "da" // Danish
+  | "de" // German
+  | "el" // Greek
+  | "en" // English (US)
+  | "en-GB" // English (UK)
+  | "es" // Spanish
+  | "et" // Estonian
+  | "fi" // Finnish
+  | "fr" // French
+  | "hu" // Hungarian
+  | "id" // Indonesian
+  | "it" // Italian
+  | "ja" // Japanese
+  | "ko" // Korean
+  | "lt" // Lithuanian
+  | "lv" // Latvian
+  | "nb" // Norwegian
+  | "nl" // Dutch
+  | "pl" // Polish
+  | "pt" // Portuguese (Portugal)
+  | "pt-BR" // Portuguese (Brazil)
+  | "ro" // Romanian
+  | "ru" // Russian
+  | "sk" // Slovak
+  | "sl" // Slovenian
+  | "sv" // Swedish
+  | "tr" // Turkish
+  | "uk" // Ukrainian
+  | "zh-Hans" // Chinese (Simplified)
+  | "zh-Hant"; // Chinese (Traditional)
 
 /**
- * 언어 코드 매핑 (파일명을 API 코드로 변환)
+ * Language code mapping (converts file names to API codes)
  */
 export const LANGUAGE_CODE_MAPPING: Record<string, LanguageCode> = {
   ar: "ar",
@@ -80,70 +80,70 @@ export const LANGUAGE_CODE_MAPPING: Record<string, LanguageCode> = {
 };
 
 /**
- * 언어명 매핑 (코드를 언어명으로 변환)
+ * Language name mapping (converts codes to language names)
  */
 export const LANGUAGE_NAMES: Record<LanguageCode, string> = {
-  ar: "아랍어",
-  bg: "불가리아어",
-  cs: "체코어",
-  da: "덴마크어",
-  de: "독일어",
-  el: "그리스어",
-  en: "영어 (미국)",
-  "en-GB": "영어 (영국)",
-  es: "스페인어",
-  et: "에스토니아어",
-  fi: "핀란드어",
-  fr: "프랑스어",
-  hu: "헝가리어",
-  id: "인도네시아어",
-  it: "이탈리아어",
-  ja: "일본어",
-  ko: "한국어",
-  lt: "리투아니아어",
-  lv: "라트비아어",
-  nb: "노르웨이어",
-  nl: "네덜란드어",
-  pl: "폴란드어",
-  pt: "포르투갈어 (포르투갈)",
-  "pt-BR": "포르투갈어 (브라질)",
-  ro: "루마니아어",
-  ru: "러시아어",
-  sk: "슬로바키아어",
-  sl: "슬로베니아어",
-  sv: "스웨덴어",
-  tr: "터키어",
-  uk: "우크라이나어",
-  "zh-Hans": "중국어 (간체)",
-  "zh-Hant": "중국어 (번체)",
+  ar: "Arabic",
+  bg: "Bulgarian",
+  cs: "Czech",
+  da: "Danish",
+  de: "German",
+  el: "Greek",
+  en: "English (US)",
+  "en-GB": "English (UK)",
+  es: "Spanish",
+  et: "Estonian",
+  fi: "Finnish",
+  fr: "French",
+  hu: "Hungarian",
+  id: "Indonesian",
+  it: "Italian",
+  ja: "Japanese",
+  ko: "Korean",
+  lt: "Lithuanian",
+  lv: "Latvian",
+  nb: "Norwegian",
+  nl: "Dutch",
+  pl: "Polish",
+  pt: "Portuguese (Portugal)",
+  "pt-BR": "Portuguese (Brazil)",
+  ro: "Romanian",
+  ru: "Russian",
+  sk: "Slovak",
+  sl: "Slovenian",
+  sv: "Swedish",
+  tr: "Turkish",
+  uk: "Ukrainian",
+  "zh-Hans": "Chinese (Simplified)",
+  "zh-Hant": "Chinese (Traditional)",
 };
 
 /**
- * 번역 설정 옵션
+ * Translation configuration options
  */
 export interface TranslationOptions {
-  /** 소스 언어 코드 */
+  /** Source language code */
   sourceLanguage: LanguageCode;
-  /** 대상 언어 코드 */
+  /** Target language code */
   targetLanguage: LanguageCode;
-  /** 자동 감지 여부 (소스 언어가 제공되지 않은 경우) */
+  /** Auto detection option (if source language is not provided) */
   autoDetect?: boolean;
-  /** 최대 문자 길이 */
+  /** Maximum character length */
   maxLength?: number;
-  /** 캐싱 사용 여부 */
+  /** Whether to use caching */
   useCache?: boolean;
 }
 
 /**
- * 번역 결과
+ * Translation result
  */
 export interface TranslationResult {
-  /** 원본 텍스트 */
+  /** Original text */
   originalText: string;
-  /** 번역된 텍스트 */
+  /** Translated text */
   translatedText: string;
-  /** 소스 언어 (감지된 경우 포함) */
+  /** Source language (including detected if applicable) */
   sourceLanguage: LanguageCode;
-  /** 대상 언어 */
+  /** Target language */
   targetLanguage: LanguageCode;
 }

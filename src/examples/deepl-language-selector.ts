@@ -2,15 +2,15 @@ import { DeepLTranslator } from "../translator";
 import { LanguageCode, TranslationOptions, LANGUAGE_NAMES } from "../types";
 import dotenv from "dotenv";
 
-// .env 파일 로드
+// Load .env file
 dotenv.config();
 
 /**
- * 사용 가능한 모든 언어 출력
- * @param translator DeepL 번역기 인스턴스
+ * Print all available languages
+ * @param translator DeepL translator instance
  */
 function printAvailableLanguages(translator: DeepLTranslator): void {
-  console.log("\n✅ 사용 가능한 언어 목록:");
+  console.log("\n✅ Available languages:");
 
   const languages = translator.getSupportedLanguageNameMap();
   const languageCodes = translator.getSupportedLanguages();
@@ -21,11 +21,11 @@ function printAvailableLanguages(translator: DeepLTranslator): void {
 }
 
 /**
- * 주어진 텍스트를 지정된 언어로 번역
- * @param translator DeepL 번역기 인스턴스
- * @param text 번역할 텍스트
- * @param sourceLanguage 원본 언어 코드
- * @param targetLanguages 번역할 대상 언어 코드 배열
+ * Translate given text to specified languages
+ * @param translator DeepL translator instance
+ * @param text Text to translate
+ * @param sourceLanguage Source language code
+ * @param targetLanguages Array of target language codes
  */
 async function translateToMultipleLanguages(
   translator: DeepLTranslator,
@@ -33,11 +33,11 @@ async function translateToMultipleLanguages(
   sourceLanguage: LanguageCode,
   targetLanguages: LanguageCode[]
 ): Promise<void> {
-  console.log(`\n📝 원본 텍스트 (${sourceLanguage}): "${text}"`);
+  console.log(`\n📝 Original text (${sourceLanguage}): "${text}"`);
 
   for (const targetLang of targetLanguages) {
     try {
-      // 현재 타겟 언어로 번역 옵션 변경
+      // Change translation options for current target language
       const options: TranslationOptions = {
         sourceLanguage,
         targetLanguage: targetLang,
@@ -45,59 +45,59 @@ async function translateToMultipleLanguages(
         useCache: true,
       };
 
-      // 새 번역기 인스턴스 생성 (또는 기존 인스턴스 설정 업데이트 방법 사용 가능)
+      // Create new translator instance (alternatively could update existing instance settings)
       const langTranslator = new DeepLTranslator(
         options,
         translator["apiKey"],
         translator["apiUrl"]
       );
 
-      // 번역 실행
-      console.log(`🔄 '${LANGUAGE_NAMES[targetLang]}'(으)로 번역 중...`);
+      // Perform translation
+      console.log(`🔄 Translating to '${LANGUAGE_NAMES[targetLang]}'...`);
       const result = await langTranslator.translate(text);
 
-      // 결과 출력
+      // Print result
       console.log(
         `✅ ${LANGUAGE_NAMES[targetLang]}: "${result.translatedText}"`
       );
     } catch (error) {
-      console.error(`❌ ${targetLang} 번역 실패:`, error);
+      console.error(`❌ Translation to ${targetLang} failed:`, error);
     }
   }
 }
 
 async function main() {
-  // 환경 변수에서 API 키 가져오기
+  // Get API key from environment variable
   const apiKey = process.env.DEEPL_API_KEY;
 
   if (!apiKey) {
-    console.error("❌ DeepL API 키가 설정되지 않았습니다.");
-    console.error("💡 .env 파일에 DEEPL_API_KEY를 설정해주세요.");
+    console.error("❌ DeepL API key is not set.");
+    console.error("💡 Please set DEEPL_API_KEY in your .env file.");
     process.exit(1);
   }
 
-  // 기본 번역 옵션 설정
+  // Set default translation options
   const options: TranslationOptions = {
     sourceLanguage: "ko",
-    targetLanguage: "en", // 기본값, 실제로는 아래에서 다양한 언어로 번역
+    targetLanguage: "en", // Default value, will translate to various languages below
     autoDetect: true,
     useCache: true,
   };
 
-  // DeepL 번역기 생성
+  // Create DeepL translator
   const translator = new DeepLTranslator(options, apiKey);
 
-  // 사용 가능한 언어 출력
+  // Print available languages
   printAvailableLanguages(translator);
 
-  // 번역할 텍스트 예시
+  // Example texts to translate
   const textsToTranslate = [
     "안녕하세요, 오늘은 날씨가 좋네요.",
     "변수 {name}는 중요한 값입니다.",
     "이 {product}의 가격은 {price}원입니다.",
   ];
 
-  // 번역할 대상 언어 선택 (예시)
+  // Select target languages (example)
   const targetLanguages: LanguageCode[] = [
     "en",
     "ja",
@@ -107,13 +107,13 @@ async function main() {
     "es",
   ];
 
-  // 각 텍스트를 여러 언어로 번역
+  // Translate each text to multiple languages
   for (const text of textsToTranslate) {
     await translateToMultipleLanguages(translator, text, "ko", targetLanguages);
   }
 
-  console.log("\n✨ 모든 번역이 완료되었습니다.");
+  console.log("\n✨ All translations completed.");
 }
 
-// 스크립트 실행
-main().catch((error) => console.error("❌ 오류 발생:", error));
+// Run script
+main().catch((error) => console.error("❌ Error occurred:", error));

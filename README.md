@@ -1,89 +1,89 @@
-# TS 번역기 자동화 코어
+# TS Translator Automation Core
 
-TypeScript로 작성된 다양한 번역 API를 사용할 수 있는 코어 라이브러리입니다.
+A core library for utilizing various translation APIs written in TypeScript.
 
-## 설치
+## Installation
 
 ```bash
 npm install ts-translator-auto-core
 ```
 
-## 기능
+## Features
 
-- 다양한 번역 서비스 지원 (DeepL, Dummy 등)
-- 변수 패턴 보존 (예: `{name}`)
-- 확장 가능한 추상 클래스 기반 설계
-- 타입 안전성 지원
-- DeepL에서 지원하는 모든 언어 지원 (33개 언어)
-- 언어 간 번역 자동화 도구 제공
+- Support for various translation services (DeepL, Dummy, etc.)
+- Variable pattern preservation (e.g., `{name}`)
+- Extensible abstract class-based design
+- Type safety support
+- Support for all languages supported by DeepL (33 languages)
+- Provides language translation automation tools
 
-## 지원하는 언어
+## Supported Languages
 
-DeepL API에서 지원하는 33개 언어:
+33 languages supported by the DeepL API:
 
-- 아랍어 (ar)
-- 불가리아어 (bg)
-- 체코어 (cs)
-- 덴마크어 (da)
-- 독일어 (de)
-- 그리스어 (el)
-- 영어 (미국) (en)
-- 영어 (영국) (en-GB)
-- 스페인어 (es)
-- 에스토니아어 (et)
-- 핀란드어 (fi)
-- 프랑스어 (fr)
-- 헝가리어 (hu)
-- 인도네시아어 (id)
-- 이탈리아어 (it)
-- 일본어 (ja)
-- 한국어 (ko)
-- 리투아니아어 (lt)
-- 라트비아어 (lv)
-- 노르웨이어 (nb)
-- 네덜란드어 (nl)
-- 폴란드어 (pl)
-- 포르투갈어 (포르투갈) (pt)
-- 포르투갈어 (브라질) (pt-BR)
-- 루마니아어 (ro)
-- 러시아어 (ru)
-- 슬로바키아어 (sk)
-- 슬로베니아어 (sl)
-- 스웨덴어 (sv)
-- 터키어 (tr)
-- 우크라이나어 (uk)
-- 중국어 (간체) (zh-Hans)
-- 중국어 (번체) (zh-Hant)
+- Arabic (ar)
+- Bulgarian (bg)
+- Czech (cs)
+- Danish (da)
+- German (de)
+- Greek (el)
+- English (US) (en)
+- English (UK) (en-GB)
+- Spanish (es)
+- Estonian (et)
+- Finnish (fi)
+- French (fr)
+- Hungarian (hu)
+- Indonesian (id)
+- Italian (it)
+- Japanese (ja)
+- Korean (ko)
+- Lithuanian (lt)
+- Latvian (lv)
+- Norwegian (nb)
+- Dutch (nl)
+- Polish (pl)
+- Portuguese (Portugal) (pt)
+- Portuguese (Brazil) (pt-BR)
+- Romanian (ro)
+- Russian (ru)
+- Slovak (sk)
+- Slovenian (sl)
+- Swedish (sv)
+- Turkish (tr)
+- Ukrainian (uk)
+- Chinese (Simplified) (zh-Hans)
+- Chinese (Traditional) (zh-Hant)
 
-## 사용 방법
+## Usage
 
-### 환경 설정
+### Environment Setup
 
-1. `.env.example` 파일을 복사하여 `.env` 파일 생성
-2. DeepL API 키를 설정
+1. Copy the `.env.example` file to create an `.env` file
+2. Set up your DeepL API key
 
 ```
 cp .env.example .env
 ```
 
-`.env` 파일 내용:
+Content of the `.env` file:
 
 ```
 DEEPL_API_KEY=your_deepl_api_key_here
 ```
 
-### DeepL 번역기 사용 예시
+### DeepL Translator Usage Example
 
 ```typescript
 import { DeepLTranslator } from "ts-translator-auto-core";
 import { TranslationOptions } from "ts-translator-auto-core/types";
 import dotenv from "dotenv";
 
-// .env 파일 로드
+// Load .env file
 dotenv.config();
 
 async function main() {
-  // 번역 옵션 설정
+  // Set translation options
   const options: TranslationOptions = {
     sourceLanguage: "ko",
     targetLanguage: "en",
@@ -91,21 +91,21 @@ async function main() {
     useCache: true,
   };
 
-  // DeepL 번역기 생성
+  // Create DeepL translator
   const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
 
-  // 텍스트 번역
+  // Translate text
   const result = await translator.translate(
     "안녕하세요, 변수 {name}는 보존됩니다."
   );
   console.log(result.translatedText);
-  // 출력: "Hello, the variable {name} is preserved."
+  // Output: "Hello, the variable {name} is preserved."
 }
 
 main().catch(console.error);
 ```
 
-### 다중 언어 번역 예시
+### Multiple Language Translation Example
 
 ```typescript
 import { DeepLTranslator } from "ts-translator-auto-core";
@@ -117,57 +117,57 @@ import {
 async function main() {
   const options: TranslationOptions = {
     sourceLanguage: "ko",
-    targetLanguage: "en", // 기본값
+    targetLanguage: "en", // Default value
     autoDetect: false,
   };
 
   const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
 
-  // 사용 가능한 모든 언어 출력
-  console.log("지원하는 언어 목록:");
+  // Print all available languages
+  console.log("Supported languages list:");
   translator.getSupportedLanguages().forEach((lang) => {
     console.log(`- ${lang}`);
   });
 
-  // 번역할 대상 언어 선택
+  // Select target languages for translation
   const targetLanguages: LanguageCode[] = ["en", "ja", "zh-Hans", "fr"];
   const text = "안녕하세요, 세계!";
 
-  // 각 언어로 번역
+  // Translate to each language
   for (const lang of targetLanguages) {
-    // 옵션 변경
+    // Change options
     const langOptions = { ...options, targetLanguage: lang };
     const langTranslator = new DeepLTranslator(
       langOptions,
       process.env.DEEPL_API_KEY!
     );
 
-    // 번역 실행
+    // Execute translation
     const result = await langTranslator.translate(text);
     console.log(`${lang}: ${result.translatedText}`);
   }
 }
 ```
 
-### 번역 파일 자동화 도구
+### Translation File Automation Tool
 
-프로젝트에는 번역 파일 자동화를 위한 도구가 포함되어 있습니다:
+The project includes tools for automating translation files:
 
 ```bash
-# 모든 언어 목록 보기
+# View all language lists
 npx ts-node src/examples/translate-files.ts --list-languages
 
-# 특정 언어로 번역 파일 생성 (en, ja, fr)
+# Generate translation files for specific languages (en, ja, fr)
 npx ts-node src/examples/translate-files.ts --lang en,ja,fr
 
-# 특정 소스 파일에서 번역 생성
+# Generate translations from a specific source file
 npx ts-node src/examples/translate-files.ts --source lang/custom/ko --output lang/custom
 ```
 
-## 지원하는 번역기
+## Supported Translators
 
-1. **DummyTranslator** - 테스트용 더미 번역기
-2. **DeepLTranslator** - DeepL API를 사용한 번역기 (33개 언어 지원)
+1. **DummyTranslator** - A dummy translator for testing
+2. **DeepLTranslator** - A translator using the DeepL API (supports 33 languages)
 
 ## License
 

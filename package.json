@@ -1,7 +1,7 @@
 {
   "name": "ts-translator-auto-core",
   "version": "0.1.0",
-  "description": "TypeScript 기반 번역기의 코어 패키지",
+  "description": "TypeScript-based translator core package",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

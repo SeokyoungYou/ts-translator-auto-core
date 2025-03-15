@@ -8,7 +8,7 @@ import {
 import axios, { AxiosError } from "axios";
 
 /**
- * 기본 번역 옵션
+ * Default translation options
  */
 const DEFAULT_OPTIONS: Partial<TranslationOptions> = {
   autoDetect: true,
@@ -17,33 +17,33 @@ const DEFAULT_OPTIONS: Partial<TranslationOptions> = {
 };
 
 /**
- * 기본 번역기 클래스
- * 실제 번역 로직은 하위 클래스에서 구현해야 합니다.
+ * Base Translator class
+ * Actual translation logic must be implemented in subclasses.
  */
 export abstract class Translator {
   protected options: TranslationOptions;
 
   /**
-   * 번역기 생성자
-   * @param options 번역 옵션
+   * Translator constructor
+   * @param options Translation options
    */
   constructor(options: TranslationOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options } as TranslationOptions;
   }
 
   /**
-   * 텍스트 번역
-   * @param text 번역할 텍스트
-   * @returns 번역 결과 프로미스
+   * Translate text
+   * @param text Text to translate
+   * @returns Translation result promise
    */
   public async translate(text: string): Promise<TranslationResult> {
     if (!text || text.trim() === "") {
-      throw new Error("번역할 텍스트가 비어있습니다.");
+      throw new Error("Text to translate is empty.");
     }
 
     if (text.length > (this.options.maxLength || DEFAULT_OPTIONS.maxLength!)) {
       throw new Error(
-        `텍스트가 최대 길이(${this.options.maxLength})를 초과했습니다.`
+        `Text exceeds maximum length (${this.options.maxLength}).`
       );
     }
 
@@ -51,28 +51,28 @@ export abstract class Translator {
   }
 
   /**
-   * 실제 번역 로직 구현 (하위 클래스에서 구현)
-   * @param text 번역할 텍스트
+   * Implement actual translation logic (implemented in subclasses)
+   * @param text Text to translate
    */
   protected abstract translateText(text: string): Promise<TranslationResult>;
 
   /**
-   * 지원하는 언어 목록 반환
+   * Return list of supported languages
    */
   public abstract getSupportedLanguages(): LanguageCode[];
 }
 
 /**
- * 기본 번역기 구현 (예제용)
- * 실제로는 외부 API를 사용하거나 구체적인 번역 로직을 구현해야 합니다.
+ * Basic translator implementation (for example)
+ * In practice, you should use an external API or implement specific translation logic.
  */
 export class DummyTranslator extends Translator {
   protected async translateText(text: string): Promise<TranslationResult> {
-    // 실제 구현에서는 외부 API 호출 등을 수행합니다.
-    // 이 예제에서는 간단한 더미 구현을 제공합니다.
+    // In a real implementation, you would call an external API, etc.
+    // This example provides a simple dummy implementation.
     return {
       originalText: text,
-      translatedText: `[번역됨] ${text}`,
+      translatedText: `[Translated] ${text}`,
       sourceLanguage: this.options.sourceLanguage,
       targetLanguage: this.options.targetLanguage,
     };
@@ -84,7 +84,7 @@ export class DummyTranslator extends Translator {
 }
 
 /**
- * DeepL API를 사용한 번역기 구현
+ * Translator implementation using DeepL API
  */
 export class DeepLTranslator extends Translator {
   private apiKey: string;
@@ -92,10 +92,10 @@ export class DeepLTranslator extends Translator {
   private readonly VARIABLE_PATTERN = /\{([^}]+)\}/g;
 
   /**
-   * DeepL 번역기 생성자
-   * @param options 번역 옵션
-   * @param apiKey DeepL API 키
-   * @param apiUrl DeepL API URL (기본값: https://api-free.deepl.com/v2/translate)
+   * DeepL Translator constructor
+   * @param options Translation options
+   * @param apiKey DeepL API key
+   * @param apiUrl DeepL API URL (default: https://api-free.deepl.com/v2/translate)
    */
   constructor(
     options: TranslationOptions,
@@ -105,7 +105,7 @@ export class DeepLTranslator extends Translator {
     super(options);
 
     if (!apiKey) {
-      throw new Error("DeepL API 키가 필요합니다.");
+      throw new Error("DeepL API key is required.");
     }
 
     this.apiKey = apiKey;
@@ -113,24 +113,24 @@ export class DeepLTranslator extends Translator {
   }
 
   /**
-   * 언어 코드를 DeepL API 형식으로 변환
-   * @param langCode 언어 코드
-   * @returns DeepL API 형식의 언어 코드
+   * Convert language code to DeepL API format
+   * @param langCode Language code
+   * @returns Language code in DeepL API format
    */
   private formatLanguageCodeForApi(langCode: LanguageCode): string {
-    // DeepL API는 언어 코드를 특정 형식으로 요구함
-    // en-GB → EN-GB, zh-Hans → ZH, pt-BR → PT-BR 등
+    // DeepL API requires language codes in a specific format
+    // en-GB → EN-GB, zh-Hans → ZH, pt-BR → PT-BR, etc.
     return langCode.toUpperCase();
   }
 
   /**
-   * DeepL API를 사용하여 텍스트 번역
-   * @param text 번역할 텍스트
-   * @returns 번역 결과
+   * Translate text using DeepL API
+   * @param text Text to translate
+   * @returns Translation result
    */
   protected async translateText(text: string): Promise<TranslationResult> {
     try {
-      // 변수를 <keep>변수</keep> 형태로 변환하여 번역에서 제외
+      // Convert variables to <keep>variable</keep> format to exclude from translation
       const textToTranslate = text.replace(
         this.VARIABLE_PATTERN,
         (match) => `<keep>${match}</keep>`
@@ -146,9 +146,9 @@ export class DeepLTranslator extends Translator {
           source_lang: this.options.autoDetect
             ? undefined
             : this.formatLanguageCodeForApi(this.options.sourceLanguage),
-          // XML 처리 옵션 추가
+          // Add XML handling options
           tag_handling: "xml",
-          // keep 태그 내부는 번역하지 않도록 설정
+          // Set keep tags to not be translated
           ignore_tags: ["keep"],
         },
         {
@@ -159,7 +159,7 @@ export class DeepLTranslator extends Translator {
         }
       );
 
-      // <keep> 태그 제거하고 원래 변수 형태 복원
+      // Remove <keep> tags and restore original variable format
       let translatedText = response.data.translations[0].text;
       translatedText = translatedText.replace(/<keep>|<\/keep>/g, "");
 
@@ -173,25 +173,25 @@ export class DeepLTranslator extends Translator {
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
         throw new Error(
-          `DeepL API 번역 실패: ${
+          `DeepL API translation failed: ${
             axiosError.response?.data || axiosError.message
           }`
         );
       } else {
-        throw new Error(`DeepL API 번역 실패: ${String(error)}`);
+        throw new Error(`DeepL API translation failed: ${String(error)}`);
       }
     }
   }
 
   /**
-   * DeepL API에서 지원하는 언어 목록 반환
+   * Return list of languages supported by DeepL API
    */
   public getSupportedLanguages(): LanguageCode[] {
     return Object.values(LANGUAGE_CODE_MAPPING);
   }
 
   /**
-   * DeepL API에서 지원하는 언어 이름과 코드 맵 반환
+   * Return map of language names and codes supported by DeepL API
    */
   public getSupportedLanguageNameMap(): Record<LanguageCode, string> {
     return LANGUAGE_NAMES;

@@ -8,44 +8,47 @@ import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { LanguageCode, LANGUAGE_CODE_MAPPING, LANGUAGE_NAMES } from "../types";
 
-// ES 모듈에서 __dirname 사용하기 위한 설정
+// Setup to use __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// .env.local 파일 로드
+// Load .env.local file
 dotenv.config({ path: resolve(process.cwd(), ".env.local") });
 
-// DeepL API 설정
+// DeepL API configuration
 const DEEPL_API_KEY = process.env.DEEPL_API_KEY;
 const DEEPL_API_URL =
   process.env.DEEPL_API_URL || "https://api-free.deepl.com/v2/translate";
 
-// API 키 확인
+// Check API key
 if (!DEEPL_API_KEY) {
-  console.error("❌ DeepL API 키가 설정되지 않았습니다.");
-  console.error("💡 .env.local 파일을 확인해주세요.");
-  console.error("현재 환경변수 값:", { DEEPL_API_KEY, DEEPL_API_URL });
+  console.error("❌ DeepL API key is not set.");
+  console.error("💡 Please check your .env.local file.");
+  console.error("Current environment variable values:", {
+    DEEPL_API_KEY,
+    DEEPL_API_URL,
+  });
   process.exit(1);
 }
 
-// 지원 언어 설정 - DeepL에서 지원하는 모든 언어
+// Supported languages - all languages supported by DeepL
 const TARGET_LANGUAGES = Object.values(LANGUAGE_CODE_MAPPING);
 type TargetLanguage = LanguageCode;
 
-// 기본적으로 한국어(ko)에서 번역될 대상 언어
+// Default target languages to translate from Korean (ko)
 const DEFAULT_TARGET_LANGUAGES: TargetLanguage[] = ["en", "ja", "zh-Hans"];
 
-// 번역 타입 정의
+// Translation type definition
 type TranslationType = Record<string, string>;
 
-// 변수 패턴을 찾기 위한 정규식
+// Regular expression to find variable patterns
 const VARIABLE_PATTERN = /\{([^}]+)\}/g;
 
 /**
- * 사용 가능한 모든 언어 출력
+ * Print all available languages
  */
 function printAvailableLanguages(): void {
-  console.log("\n✅ 사용 가능한 언어 목록:");
+  console.log("\n✅ Available languages:");
 
   Object.keys(LANGUAGE_NAMES)
     .sort()
@@ -56,11 +59,11 @@ function printAvailableLanguages(): void {
 }
 
 /**
- * 번역 함수
- * @param text 번역할 텍스트
- * @param targetLang 대상 언어 코드
- * @param sourceLang 원본 언어 코드
- * @returns 번역된 텍스트
+ * Translation function
+ * @param text Text to translate
+ * @param targetLang Target language code
+ * @param sourceLang Source language code
+ * @returns Translated text
  */
 async function translateText(
   text: string,
@@ -68,7 +71,7 @@ async function translateText(
   sourceLang: LanguageCode = "ko"
 ): Promise<string> {
   try {
-    // 변수를 <keep>변수</keep> 형태로 변환
+    // Convert variables to <keep>variable</keep> format
     const textToTranslate = text.replace(
       VARIABLE_PATTERN,
       (match) => `<keep>${match}</keep>`
@@ -80,9 +83,9 @@ async function translateText(
         text: [textToTranslate],
         target_lang: targetLang.toUpperCase(),
         source_lang: sourceLang.toUpperCase(),
-        // XML 처리 옵션 추가
+        // Add XML handling options
         tag_handling: "xml",
-        // keep 태그 내부는 번역하지 않도록 설정
+        // Set keep tags to not be translated
         ignore_tags: ["keep"],
       },
       {
@@ -93,7 +96,7 @@ async function translateText(
       }
     );
 
-    // <keep> 태그 제거하고 원래 변수 형태 복원
+    // Remove <keep> tags and restore original variable format
     let translatedText = response.data.translations[0].text;
     translatedText = translatedText.replace(/<keep>|<\/keep>/g, "");
 
@@ -102,21 +105,21 @@ async function translateText(
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(
-        `❌ 번역 실패: ${text}`,
+        `❌ Translation failed: ${text}`,
         error.response?.data || error.message
       );
     } else {
-      console.error(`❌ 번역 실패: ${text}`, error);
+      console.error(`❌ Translation failed: ${text}`, error);
     }
     return text;
   }
 }
 
 /**
- * 번역 파일 생성 함수
- * @param lang 대상 언어 코드
- * @param sourcePath 소스 파일 경로
- * @param outputPath 출력 파일 경로
+ * Generate translation file
+ * @param lang Target language code
+ * @param sourcePath Source file path
+ * @param outputPath Output file path
  */
 async function generateTranslationFile(
   lang: TargetLanguage,
@@ -124,46 +127,46 @@ async function generateTranslationFile(
   outputPath: string
 ) {
   try {
-    // 경로에서 파일명과 디렉토리 분리
+    // Separate filename and directory from path
     const sourceDir = path.dirname(sourcePath);
     const sourceFile = path.basename(sourcePath);
     const sourceBaseName = path.basename(sourceFile, ".ts");
 
-    // ko.ts와 대상 언어 파일 불러오기
+    // Load ko.ts and target language file
     const koModule = await import(`../${sourcePath}`);
     const koContent = koModule[sourceBaseName];
 
     let existingTranslations: TranslationType = {};
     try {
-      // 기존 번역 파일이 있다면 불러오기
+      // Load existing translation file if it exists
       const targetFilePath = `${outputPath}/${lang}`;
       const existingModule = await import(`../${targetFilePath}`);
       existingTranslations = existingModule[lang];
-      console.log(`📖 기존 ${targetFilePath}.ts 파일을 불러왔습니다.`);
+      console.log(`📖 Loaded existing ${targetFilePath}.ts file.`);
     } catch (e) {
       console.log(
-        `⚠️ 기존 ${outputPath}/${lang}.ts 파일이 없습니다. 새로 생성합니다.`
+        `⚠️ No existing ${outputPath}/${lang}.ts file found. Creating a new one.`
       );
     }
 
-    // 새로운 번역 객체 생성 (기존 번역 복사)
+    // Create new translation object (copy existing translations)
     const translations: TranslationType = { ...existingTranslations };
     let newKeysCount = 0;
 
-    // 각 키에 대해 번역 수행
+    // Translate each key
     for (const [key, value] of Object.entries(koContent)) {
-      // 이미 번역된 키는 건너뛰기
+      // Skip already translated keys
       if (key in translations) {
         continue;
       }
 
-      console.log(`🔄 새로운 키 번역 중: ${key}`);
+      console.log(`🔄 Translating new key: ${key}`);
       const translatedText = await translateText(value as string, lang, "ko");
       translations[key] = translatedText;
       newKeysCount++;
     }
 
-    // 번역 파일 생성
+    // Create translation file
     const outputContent = `export const ${lang} = ${JSON.stringify(
       translations,
       null,
@@ -175,20 +178,20 @@ async function generateTranslationFile(
       `${lang}.ts`
     );
 
-    // 디렉토리가 없으면 생성
+    // Create directory if it doesn't exist
     await fs.mkdir(path.dirname(fullOutputPath), { recursive: true });
 
     await fs.writeFile(fullOutputPath, outputContent, "utf-8");
-    console.log(`✨ ${outputPath}/${lang}.ts 파일이 업데이트되었습니다.`);
-    console.log(`📊 새로 번역된 키: ${newKeysCount}개`);
+    console.log(`✨ ${outputPath}/${lang}.ts file has been updated.`);
+    console.log(`📊 Newly translated keys: ${newKeysCount}`);
   } catch (error) {
-    console.error(`❌ ${outputPath}/${lang} 파일 생성 실패:`, error);
+    console.error(`❌ Failed to create ${outputPath}/${lang} file:`, error);
   }
 }
 
 /**
- * 커맨드라인 인수 파싱
- * @returns 파싱된 옵션들
+ * Parse command line arguments
+ * @returns Parsed options
  */
 function parseCommandLineArguments() {
   const args = process.argv.slice(2);
@@ -215,10 +218,10 @@ function parseCommandLineArguments() {
     } else if (arg === "--list-languages" || arg === "-l") {
       options.listLanguages = true;
     } else if (arg === "--lang" || arg === "-t") {
-      // 다음 인자가 언어 코드
+      // Next argument is language code
       if (i + 1 < args.length) {
         const langs = args[++i].split(",");
-        // 언어 코드 검증
+        // Validate language codes
         const validLangs = langs.filter((lang) =>
           TARGET_LANGUAGES.includes(lang as LanguageCode)
         ) as TargetLanguage[];
@@ -226,11 +229,11 @@ function parseCommandLineArguments() {
         if (validLangs.length > 0) {
           options.targetLanguages = validLangs;
         } else {
-          console.warn("⚠️ 유효한 언어 코드가 없습니다. 기본값을 사용합니다.");
+          console.warn("⚠️ No valid language codes provided. Using defaults.");
         }
       }
     } else if (arg === "--source" || arg === "-s") {
-      // 다음 인자가 소스 경로
+      // Next argument is source path
       if (i + 1 < args.length) {
         const sourcePath = args[++i];
         if (
@@ -238,7 +241,7 @@ function parseCommandLineArguments() {
           i + 1 < args.length &&
           (args[i + 1] === "--output" || args[i + 1] === "-o")
         ) {
-          // output 옵션이 다음에 있는 경우
+          // If output option follows
           i++;
           if (i + 1 < args.length) {
             const outputPath = args[++i];
@@ -247,7 +250,7 @@ function parseCommandLineArguments() {
             ];
           }
         } else {
-          // output 옵션이 없는 경우 - 소스 경로의 디렉토리를 출력 경로로 사용
+          // If no output option - use source directory as output path
           const outputPath = path.dirname(sourcePath);
           options.translationSets = [
             { source: sourcePath, output: outputPath },
@@ -261,71 +264,71 @@ function parseCommandLineArguments() {
 }
 
 /**
- * 도움말 출력
+ * Print help information
  */
 function printHelp() {
   console.log(`
-번역 파일 생성 스크립트
+Translation File Generator Script
 
-사용법:
-  npx ts-node src/examples/translate-files.ts [옵션]
+Usage:
+  npx ts-node src/examples/translate-files.ts [options]
 
-옵션:
-  -h, --help             도움말 출력
-  -l, --list-languages   지원하는 언어 목록 출력
-  -t, --lang <codes>     번역할 언어 코드 (쉼표로 구분, 예: en,ja,zh-Hans)
-  -s, --source <path>    소스 파일 경로 (ko.ts 파일)
-  -o, --output <path>    출력 디렉토리 경로
+Options:
+  -h, --help             Show help information
+  -l, --list-languages   Show list of supported languages
+  -t, --lang <codes>     Language codes to translate to (comma-separated, e.g.: en,ja,zh-Hans)
+  -s, --source <path>    Source file path (ko.ts file)
+  -o, --output <path>    Output directory path
 
-예시:
+Examples:
   npx ts-node src/examples/translate-files.ts --lang en,ja,fr
   npx ts-node src/examples/translate-files.ts -s lang/custom/ko -o lang/custom
   `);
 }
 
 /**
- * 메인 실행 함수
+ * Main execution function
  */
 async function main() {
-  console.log("🚀 번역 시작...");
+  console.log("🚀 Starting translation...");
 
-  // 커맨드라인 인수 파싱
+  // Parse command line arguments
   const options = parseCommandLineArguments();
 
-  // 도움말 출력
+  // Show help
   if (options.showHelp) {
     printHelp();
     process.exit(0);
   }
 
-  // 언어 목록 출력
+  // Show language list
   if (options.listLanguages) {
     printAvailableLanguages();
     process.exit(0);
   }
 
-  // 번역 세트와 언어 정보 출력
-  console.log("📋 번역 설정:");
-  console.log(`- 대상 언어: ${options.targetLanguages.join(", ")}`);
-  console.log("- 번역 세트:");
+  // Display translation sets and language information
+  console.log("📋 Translation configuration:");
+  console.log(`- Target languages: ${options.targetLanguages.join(", ")}`);
+  console.log("- Translation sets:");
   options.translationSets.forEach((set) => {
-    console.log(`  * 소스: ${set.source}, 출력: ${set.output}`);
+    console.log(`  * Source: ${set.source}, Output: ${set.output}`);
   });
 
-  // 각 번역 세트와 언어에 대해 번역 파일 생성
+  // Generate translation files for each set and language
   for (const set of options.translationSets) {
-    console.log(`\n🗂️ ${set.source} 세트 번역 시작...`);
+    console.log(`\n🗂️ Starting translation for ${set.source} set...`);
 
     for (const lang of options.targetLanguages) {
       console.log(
-        `\n📝 ${lang} (${LANGUAGE_NAMES[lang]}) 번역 파일 생성 중...`
+        `\n📝 Generating ${lang} (${LANGUAGE_NAMES[lang]}) translation file...`
       );
       await generateTranslationFile(lang, set.source, set.output);
     }
   }
 
-  console.log("\n✅ 모든 번역이 완료되었습니다!");
+  console.log("\n✅ All translations completed!");
 }
 
-// 스크립트 실행
+// Run script
 main().catch(console.error);
