@@ -20,6 +20,28 @@ const DEFAULT_OPTIONS: Partial<TranslationOptions> = {
 };
 
 /**
+ * 특정 언어 문자 범위 정의
+ */
+const LANGUAGE_CHAR_PATTERNS = {
+  // 영어와 일반 구두점, 숫자는 모든 언어에서 공통으로 사용
+  common: /^[a-zA-Z0-9\s.,!?():\-'"]+$/,
+  // 한국어
+  ko: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/,
+  // 중국어 (간체 및 번체)
+  zh: /[\u4E00-\u9FFF\u3400-\u4DBF]/,
+  // 일본어 (히라가나, 가타카나, 한자)
+  ja: /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/,
+  // 아랍어
+  ar: /[\u0600-\u06FF]/,
+  // 러시아어 (키릴 문자)
+  ru: /[\u0400-\u04FF]/,
+  // 히브리어
+  he: /[\u0590-\u05FF]/,
+  // 태국어
+  th: /[\u0E00-\u0E7F]/,
+};
+
+/**
  * Base Translator class
  * Actual translation logic must be implemented in subclasses.
  */
@@ -104,6 +126,9 @@ export class DeepLTranslator extends Translator {
   private apiKey: string;
   private apiUrl: string;
   private readonly VARIABLE_PATTERN = /\{([^}]+)\}/g;
+  private readonly CONTEXT_DELIMITER: string;
+  private readonly VARIABLE_PREFIX: string;
+  private readonly VARIABLE_SUFFIX: string;
   private lastRequestTime: number = 0;
   private currentDelay: number;
 
@@ -129,6 +154,12 @@ export class DeepLTranslator extends Translator {
     this.currentDelay =
       this.options.delayBetweenRequests ||
       DEFAULT_OPTIONS.delayBetweenRequests!;
+
+    // Context delimiter is unique to each instance
+    const randomId = Math.random().toString(36).substring(2, 10);
+    this.CONTEXT_DELIMITER = `__DEEPL_CTX_${randomId}__`;
+    this.VARIABLE_PREFIX = `__DEEPL_VAR_${randomId}_`;
+    this.VARIABLE_SUFFIX = `__`;
   }
 
   /**
@@ -182,10 +213,12 @@ export class DeepLTranslator extends Translator {
           source_lang: this.options.autoDetect
             ? undefined
             : this.formatLanguageCodeForApi(this.options.sourceLanguage),
-          // Add XML tag handling option
+          preserve_formatting: true,
+          // 형식 무시 옵션 추가
           tag_handling: "xml",
-          // Set tags to exclude from translation
-          ignore_tags: ["v"],
+          outline_detection: false,
+          splitting_tags: [],
+          non_splitting_tags: [],
         },
         {
           headers: {
@@ -195,7 +228,7 @@ export class DeepLTranslator extends Translator {
         }
       );
 
-      // 성공 시 현재 딜레이를 기본 값으로 재설정
+      // Reset delay time
       this.currentDelay =
         this.options.delayBetweenRequests ||
         DEFAULT_OPTIONS.delayBetweenRequests!;
@@ -242,6 +275,134 @@ export class DeepLTranslator extends Translator {
   }
 
   /**
+   * 텍스트에 특정 언어의 문자가, 해당 언어가 타겟 언어와 일치하는지 확인
+   * @param text 검사할 텍스트
+   * @param targetLanguage 타겟 언어 코드
+   * @returns {boolean} 올바른 언어로만 구성되었으면 true, 아니면 false
+   */
+  private isTextInExpectedLanguage(
+    text: string,
+    targetLanguage: LanguageCode
+  ): { valid: boolean; detectedLanguages: string[] } {
+    // 변수 패턴 제거 (언어 검증에서 제외)
+    const textWithoutVars = text.replace(this.VARIABLE_PATTERN, "");
+
+    // 공통 문자 (영어, 숫자, 구두점) 제거
+    const textWithoutCommon = textWithoutVars.replace(
+      /[a-zA-Z0-9\s.,!?():\-'"]/g,
+      ""
+    );
+
+    // 텍스트가 비어있으면 공통 문자만 포함하므로 유효함
+    if (textWithoutCommon.length === 0) {
+      return { valid: true, detectedLanguages: ["common"] };
+    }
+
+    // 감지된 언어들 저장
+    const detectedLanguages: string[] = [];
+
+    // 각 언어 패턴으로 검사
+    for (const [langCode, pattern] of Object.entries(LANGUAGE_CHAR_PATTERNS)) {
+      if (langCode === "common") continue; // 공통 패턴은 이미 제거됨
+
+      if (pattern.test(textWithoutCommon)) {
+        detectedLanguages.push(langCode);
+      }
+    }
+
+    // 타겟 언어 약어 추출 (zh-Hans -> zh)
+    const targetLangBase = targetLanguage.split("-")[0];
+
+    // 감지된 언어 중 타겟 언어가 있는지 확인
+    const hasTargetLang = detectedLanguages.some(
+      (lang) => lang === targetLangBase
+    );
+
+    // 다른 언어들도 있는지 확인
+    const hasOtherLangs = detectedLanguages.some(
+      (lang) => lang !== targetLangBase && lang !== "common"
+    );
+
+    // 타겟 언어만 있거나, 아무 언어도 감지되지 않으면 유효함
+    const valid =
+      (hasTargetLang && !hasOtherLangs) || detectedLanguages.length === 0;
+
+    return { valid, detectedLanguages };
+  }
+
+  /**
+   * 번역 후처리 및 검증
+   */
+  private postProcessTranslation(
+    translatedText: string,
+    originalText: string,
+    variables: { start: number; end: number; name: string }[]
+  ): string {
+    // 변수 태그를 원래의 변수 형식으로 복원
+    for (let i = 0; i < variables.length; i++) {
+      const varName = variables[i].name;
+      const varPattern = new RegExp(
+        `${this.VARIABLE_PREFIX}${i}${this.VARIABLE_SUFFIX}`,
+        "g"
+      );
+      translatedText = translatedText.replace(varPattern, `{${varName}}`);
+    }
+
+    // 번역 결과 검증
+    // 1. 변수 갯수가 유지되는지 확인
+    const originalVarCount = (originalText.match(this.VARIABLE_PATTERN) || [])
+      .length;
+    const translatedVarCount = (
+      translatedText.match(this.VARIABLE_PATTERN) || []
+    ).length;
+
+    if (originalVarCount !== translatedVarCount) {
+      console.warn(
+        `변수 개수 불일치: 원본=${originalVarCount}, 번역=${translatedVarCount}, 텍스트="${originalText}"`
+      );
+    }
+
+    // 2. 우리 구분자가 남아있는지 확인
+    if (
+      translatedText.includes(this.VARIABLE_PREFIX) ||
+      translatedText.includes(this.VARIABLE_SUFFIX) ||
+      translatedText.includes(this.CONTEXT_DELIMITER)
+    ) {
+      console.warn(`구분자가 번역 결과에 남아있습니다: "${translatedText}"`);
+
+      // 남아있는 구분자 정리 시도
+      for (let i = 0; i < variables.length; i++) {
+        const varName = variables[i].name;
+        const pattern = new RegExp(
+          `${this.VARIABLE_PREFIX}${i}${this.VARIABLE_SUFFIX}`,
+          "g"
+        );
+        translatedText = translatedText.replace(pattern, `{${varName}}`);
+      }
+      translatedText = translatedText.replace(
+        new RegExp(this.CONTEXT_DELIMITER, "g"),
+        ""
+      );
+    }
+
+    // 3. 언어 혼합 검사
+    const languageCheck = this.isTextInExpectedLanguage(
+      translatedText,
+      this.options.targetLanguage
+    );
+
+    if (!languageCheck.valid) {
+      console.warn(
+        `언어 혼합 감지: 타겟 언어=${this.options.targetLanguage}, ` +
+          `감지된 언어=[${languageCheck.detectedLanguages.join(", ")}], ` +
+          `텍스트="${translatedText}"`
+      );
+    }
+
+    return translatedText;
+  }
+
+  /**
    * Translate text using DeepL API
    * @param text Text to translate
    * @param context Optional context key to provide more context for translation
@@ -252,45 +413,62 @@ export class DeepLTranslator extends Translator {
     context?: string
   ): Promise<TranslationResult> {
     try {
-      // Special handling to preserve variable patterns during DeepL translation
-      // Wrap with <v> tags to exclude from translation
-      const textToTranslate = text.replace(
-        this.VARIABLE_PATTERN,
-        (match) => `<v>${match}</v>`
-      );
+      // Check if text already contains our delimiters
+      const hasOurDelimiters =
+        text.includes(this.VARIABLE_PREFIX) ||
+        text.includes(this.CONTEXT_DELIMITER);
 
-      // Create translation text with context if provided
-      let textWithContext = textToTranslate;
-      if (context) {
-        // Prepend context for translation but keep it separate with delimiter
-        // Format: "context [CONTEXT_DELIM] text_to_translate"
-        textWithContext = `${context} [CONTEXT] ${textToTranslate}`;
+      // Extract variables from original text and replace them safely
+      let processedText = text;
+      const variables: { start: number; end: number; name: string }[] = [];
+
+      // Extract variable positions and names
+      let match;
+      while ((match = this.VARIABLE_PATTERN.exec(text)) !== null) {
+        variables.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          name: match[1],
+        });
       }
 
-      // API 요청 보내기 (재시도 로직 포함)
+      // Replace variables from the end (to avoid index changes)
+      for (let i = variables.length - 1; i >= 0; i--) {
+        const v = variables[i];
+        const safeName = `${this.VARIABLE_PREFIX}${i}${this.VARIABLE_SUFFIX}`;
+        processedText =
+          processedText.substring(0, v.start) +
+          safeName +
+          processedText.substring(v.end);
+      }
+
+      // If context is provided, combine it with a unique delimiter
+      let textWithContext = processedText;
+      if (context) {
+        textWithContext = `${context} ${this.CONTEXT_DELIMITER} ${processedText}`;
+      }
+
+      // Send API request (with retry logic)
       const response = await this.makeApiRequest(textWithContext);
 
-      // Get translated text from response
+      // Get translated text
       let translatedText = response.data.translations[0].text;
 
-      // If context was provided, remove the translated context portion
+      // If context is provided, remove the translated context part
       if (context) {
-        // Find the [CONTEXT] delimiter in the translated text and remove everything before it
-        const contextDelimIndex = translatedText.indexOf("[CONTEXT]");
-        if (contextDelimIndex !== -1) {
+        const delimiterIndex = translatedText.indexOf(this.CONTEXT_DELIMITER);
+        if (delimiterIndex !== -1) {
           translatedText = translatedText
-            .substring(contextDelimIndex + "[CONTEXT]".length)
+            .substring(delimiterIndex + this.CONTEXT_DELIMITER.length)
             .trim();
         }
       }
 
-      // Remove v tags and restore variable format
-      // Use regex to handle cases where numbers are added
-      translatedText = translatedText.replace(
-        /<v>\{([^}]+)\}<\/v>(\d+)?/g,
-        (_: string, varName: string) => {
-          return `{${varName}}`;
-        }
+      // 번역 후처리 및 검증 수행
+      translatedText = this.postProcessTranslation(
+        translatedText,
+        text,
+        variables
       );
 
       return {
