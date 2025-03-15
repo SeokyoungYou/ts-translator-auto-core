@@ -5,36 +5,11 @@ A TypeScript library for automating translations across multiple languages using
 ## Key Features
 
 - Variable pattern preservation in translations (e.g., `{name}`)
-
-```typescript
-const translator = new DeepLTranslator(options, process.env.DEEPL_API_KEY!);
-
-// Variables like {name} are preserved in translation
-const result = await translator.translate(
-  "안녕하세요, 변수 {name}는 보존됩니다."
-);
-console.log(result.translatedText);
-// Output: "Hello, the variable {name} is preserved."
-```
-
 - Context-based translation for improved accuracy
-
-```typescript
-// Without context - might be ambiguous
-const result1 = await translator.translate("{count}개");
-console.log(result1.translatedText); // Could be "{count} dog" or just "{count}"
-
-// With context - provides better translation
-const result2 = await translator.translate("{count}개", "item_count");
-console.log(result2.translatedText); // "{count} items"
-
-const result3 = await translator.translate("{count}명", "person_count");
-console.log(result3.translatedText); // "{count} people"
-```
-
 - Type safety with TypeScript
 - Support for all 33 languages available in DeepL API
 - Translation automation tools for batch processing
+- **Dual module system support (ESM and CommonJS)**
 
 ## Installation
 
@@ -58,7 +33,61 @@ Then add your API key:
 DEEPL_API_KEY=your_deepl_api_key_here
 ```
 
-### 2. Batch Translation with TranslationManager
+### 2. Dual Module System Support
+
+This package supports both ESM and CommonJS module systems:
+
+#### ESM (ECMAScript Modules)
+
+```javascript
+// Using ESM import syntax
+import { DeepLTranslator, TranslationManager } from "ts-translator-auto-core";
+
+const translator = new DeepLTranslator(
+  {
+    sourceLanguage: "ko",
+    targetLanguage: "en",
+    autoDetect: false,
+  },
+  "your_api_key"
+);
+```
+
+#### CommonJS
+
+```javascript
+// Using CommonJS require syntax
+const {
+  DeepLTranslator,
+  TranslationManager,
+} = require("ts-translator-auto-core");
+
+const translator = new DeepLTranslator(
+  {
+    sourceLanguage: "ko",
+    targetLanguage: "en",
+    autoDetect: false,
+  },
+  "your_api_key"
+);
+```
+
+#### Module Compatibility Test
+
+You can test module compatibility with the provided example scripts:
+
+```bash
+# Test ESM compatibility
+npm run test:esm
+
+# Test CommonJS compatibility
+npm run test:cjs
+
+# Test both module systems
+npm run test:modules
+```
+
+### 3. Batch Translation with TranslationManager
 
 Translate files with multiple languages at once:
 
@@ -118,7 +147,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-### 3. Command-Line Translation Tool
+### 4. Command-Line Translation Tool
 
 The library includes a CLI tool for translation:
 
@@ -136,7 +165,7 @@ Then run:
 npm run translate-languages
 ```
 
-### 4. Output Results
+### 5. Output Results
 
 Translation output is organized by language:
 
