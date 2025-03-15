@@ -10,7 +10,6 @@ import {
 // Load .env file
 dotenv.config();
 
-// ES 모듈에서 경로 설정
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
 
@@ -20,7 +19,7 @@ const CONFIG: TranslationConfig = {
   // Input file settings
   input: {
     directory: path.join(currentDirPath, "data"),
-    file: "ko.ts", // Input file name
+    file: "en.ts", // Input file name
     fileExportName: "default", // Export name in the file
   },
   // Output settings
@@ -32,13 +31,9 @@ const CONFIG: TranslationConfig = {
   translation: {
     // List of target languages
     targetLanguages: [
-      "en", // English (US)
-      "ja", // Japanese
-      "zh-Hans", // Chinese (Simplified)
-      "fr", // French
-      "de", // German
+      "ko", // Korean
     ] as LanguageCode[],
-    sourceLanguage: "ko" as LanguageCode, // Source language
+    sourceLanguage: "en" as LanguageCode, // Source language
     autoDetect: false, // Automatic language detection
     useCache: true, // Use translation cache
     skipExistingKeys: true, // Skip already translated keys

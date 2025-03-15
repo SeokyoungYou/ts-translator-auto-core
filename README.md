@@ -14,6 +14,10 @@ A TypeScript library for automating translations across multiple languages using
 - **Dual module system support (ESM and CommonJS)**
 - **Rate limiting protection with automatic retry and delay**
 
+## Demo
+
+![Mar-16-2025 00-06-41](https://github.com/user-attachments/assets/218b5853-7a11-480a-a364-15338acf3078)
+
 ## Installation
 
 ```bash
