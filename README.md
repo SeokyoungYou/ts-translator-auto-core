@@ -1,18 +1,27 @@
 # TS Translator Automation Core
 
-A TypeScript library for automating translations across multiple languages using various translation APIs.
+A TypeScript library for automating translations across multiple languages using various translation APIs. (Currently only support DeepL API)
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-blue.svg)](https://github.com/SeokyoungYou/ts-translator-auto-core)
 
 ## Key Features
 
-- Variable pattern preservation in translations (e.g., `{name}`)
-- Context-based translation for improved accuracy
-- Type safety with TypeScript
-- Support for all 33 languages available in DeepL API
-- Translation automation tools for batch processing
-- **Dual module system support (ESM and CommonJS)**
-- **Rate limiting protection with automatic retry and delay**
+### Translation Quality
+
+- **Variable pattern preservation** in translations (e.g., `{name}`)
+- **Context-based translation** for improved accuracy
+- Support for all **33 languages** available in DeepL API
+
+### Development Experience
+
+- **Type safety** with TypeScript
+- **Dual module system** support (ESM and CommonJS)
+
+### Performance & Cost Optimization
+
+- **Smart caching** of previously translated content to minimize API costs
+- **Rate limiting protection** with automatic retry and delay
+- **Translation automation tools** for batch processing
 
 ## Demo
 
