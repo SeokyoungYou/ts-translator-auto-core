@@ -19,7 +19,7 @@ const CONFIG: TranslationConfig = {
   // Input file settings
   input: {
     directory: path.join(currentDirPath, "data"),
-    file: "en.ts", // Input file name
+    file: "ko.ts", // Input file name
     fileExportName: "default", // Export name in the file
   },
   // Output settings
@@ -30,10 +30,8 @@ const CONFIG: TranslationConfig = {
   // Translation settings
   translation: {
     // List of target languages
-    targetLanguages: [
-      "ko", // Korean
-    ] as LanguageCode[],
-    sourceLanguage: "en" as LanguageCode, // Source language
+    targetLanguages: ["en"] as LanguageCode[],
+    sourceLanguage: "ko" as LanguageCode, // Source language
     autoDetect: false, // Automatic language detection
     useCache: true, // Use translation cache
     skipExistingKeys: true, // Skip already translated keys
