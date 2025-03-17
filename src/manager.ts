@@ -16,9 +16,9 @@ export interface TranslationConfig {
   output: {
     directory: string;
     prettyPrint: boolean;
-    preserveNestedStructure?: boolean; // 중첩 구조 유지 여부
-    formatLanguageCode?: (language: LanguageCode) => string; // 언어 코드 포맷팅 함수
-    fileNameFormat?: FileNameFormat; // 파일 이름 형식 지정 옵션
+    preserveNestedStructure?: boolean; // Whether to preserve nested structure
+    formatLanguageCode?: (language: LanguageCode) => string; // Function for formatting language codes
+    fileNameFormat?: FileNameFormat; // Option for file name format
   };
   translation: {
     targetLanguages: LanguageCode[];
@@ -26,8 +26,8 @@ export interface TranslationConfig {
     autoDetect: boolean;
     useCache: boolean;
     skipExistingKeys: boolean;
-    useContext?: boolean; // 번역 시 컨텍스트 사용 여부
-    valueOnly?: boolean; // 값만 사용하여 번역할지 여부
+    useContext?: boolean; // Whether to use context for translation
+    valueOnly?: boolean; // Whether to use only values for translation
   };
 }
 
@@ -94,8 +94,8 @@ export class TranslationManager {
       valueOnly: this.config.translation.valueOnly,
     };
 
-    // 아랍어(ar)인 경우 기본값으로 valueOnly: true, useContext: false 설정
-    // 설정 파일에서 명시적으로 지정한 경우에는 그 값을 우선함
+    // Arabic translation settings
+    // If the target language is Arabic or starts with "ar", set valueOnly to true and useContext to false by default
     const isArabic =
       targetLanguage === "ar" || targetLanguage.toLowerCase().startsWith("ar");
     if (isArabic) {
@@ -158,19 +158,19 @@ export class TranslationManager {
       }
     }
 
-    // 아랍어인 경우, 저장 전에 한 번 더 특수 패턴 정리
+    // If the target language is Arabic, clean up the translations before saving
     if (isArabic) {
       console.log(`🧹 Final cleanup of Arabic translations before saving...`);
       for (const key of Object.keys(translations)) {
         const value = translations[key];
         if (typeof value === "string") {
-          // RTL 마커 제거
+          // Remove RTL markers
           let cleanedValue = value.replace(/\u200F/g, "");
-          // 특수 패턴 정리
+          // Clean up special patterns
           cleanedValue = cleanedValue.replace(/_\d+__/g, "");
           cleanedValue = cleanedValue.replace(/_개/g, "");
 
-          // 중복된 공백 제거 및 트림
+          // Remove duplicate spaces and trim
           cleanedValue = cleanedValue.replace(/\s+/g, " ").trim();
 
           translations[key] = cleanedValue;
@@ -205,15 +205,14 @@ export class TranslationManager {
         throw new Error(`Input file not found: ${inputFilePath}`);
       }
 
-      // 확장자 확인
       const fileExtension = path.extname(inputFilePath);
 
       let data;
 
-      // CommonJS 모듈 (.js) 처리
+      // Process CommonJS module (.js)
       if (fileExtension === ".js") {
         try {
-          // Node.js 환경에서 require() 사용
+          // Use require() in Node.js environment
           // eslint-disable-next-line @typescript-eslint/no-var-requires
           const moduleData = require(inputFilePath);
 
@@ -227,7 +226,7 @@ export class TranslationManager {
           throw err;
         }
       }
-      // TypeScript 및 ESM 모듈 처리
+      // Process TypeScript and ESM modules
       else {
         try {
           const fileUrl = `file://${path.resolve(inputFilePath)}`;
@@ -271,10 +270,10 @@ export class TranslationManager {
     language: LanguageCode
   ): Promise<Record<string, string> | null> {
     try {
-      // 입력 파일의 확장자 추출
+      // Extract extension from input file
       const fileExtension = path.extname(this.config.input.file);
 
-      // 파일 이름용 언어 코드 변환
+      // Convert language code for file name
       const filenameLanguage = this.formatOutput(language);
 
       const targetFilePath = path.join(
@@ -293,10 +292,10 @@ export class TranslationManager {
       // Read file content
       const fileContent = fs.readFileSync(targetFilePath, "utf-8");
 
-      // 언어 코드를 변수 이름으로 사용
+      // Use language code as variable name
       const langVarName = filenameLanguage;
 
-      // Find export statement (파일 형식에 따라 검색 패턴 변경)
+      // Find export statement (change search pattern based on file format)
       const exportRegex =
         fileExtension === ".ts"
           ? new RegExp(`export\\s+default\\s+${langVarName}`)
@@ -313,7 +312,7 @@ export class TranslationManager {
       try {
         let data = null;
 
-        // CommonJS 모듈 (.js) 처리
+        // CommonJS Module (.js)
         if (fileExtension === ".js") {
           try {
             // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -324,7 +323,7 @@ export class TranslationManager {
             return null;
           }
         }
-        // TypeScript 및 ESM 모듈 처리
+        // TypeScript / ESM Module
         else {
           try {
             const fileUrl = `file://${path.resolve(targetFilePath)}`;
@@ -349,13 +348,13 @@ export class TranslationManager {
           } keys)`
         );
 
-        // 중첩 구조 확인 및 평탄화
+        // Check and flatten nested structure
         if (hasNestedStructure(data)) {
           console.log(`🔄 Nested structure detected. Flattening...`);
           data = flattenObject(data);
         }
 
-        // 아랍어인 경우, 기존 번역에서 RTL 마커와 특수 패턴 정리
+        // For Arabic, clean up RTL markers and special patterns in existing translations
         const isArabic = language === "ar";
         if (isArabic) {
           console.log(
@@ -366,9 +365,9 @@ export class TranslationManager {
           for (const [key, value] of Object.entries(data)) {
             if (typeof value === "string") {
               let cleanedValue = value;
-              // RTL 마커 제거
+              // Remove RTL markers
               cleanedValue = cleanedValue.replace(/\u200F/g, "");
-              // 이상한 패턴 정리
+              // Clean up strange patterns
               cleanedValue = cleanedValue.replace(/_\d+__/g, "");
               cleanedValue = cleanedValue.replace(/_개/g, "");
               cleanedData[key] = cleanedValue;
@@ -400,10 +399,10 @@ export class TranslationManager {
     language: LanguageCode,
     translations: Record<string, string>
   ) {
-    // 입력 파일의 확장자 추출
+    // Extract extension from input file
     const fileExtension = path.extname(this.config.input.file);
 
-    // 파일 이름용 언어 코드 변환
+    // Convert language code for file name
     const filenameLanguage = this.formatOutput(language);
 
     const outputPath = path.join(
@@ -419,15 +418,15 @@ export class TranslationManager {
     // Set indentation
     const indentation = this.config.output.prettyPrint ? 2 : 0;
 
-    // 중첩 구조 유지 옵션이 활성화된 경우 변환
+    // Convert if preserve nested structure option is enabled
     const outputData = this.config.output.preserveNestedStructure
       ? unflattenObject(translations)
       : translations;
 
-    // 언어 코드를 변수 이름으로 사용
+    // Use language code as variable name
     const langVarName = filenameLanguage;
 
-    // 확장자에 따라 출력 포맷 결정
+    // Determine output format based on extension
     let fileContent;
     if (fileExtension === ".ts") {
       fileContent = `
@@ -445,7 +444,7 @@ const ${langVarName} = ${JSON.stringify(
 export default ${langVarName};
 `;
     } else {
-      // JavaScript 파일 (.js)
+      // JavaScript file (.js)
       fileContent = `
 /**
  * ${filenameLanguage} translations
@@ -463,30 +462,30 @@ module.exports = ${langVarName};
   }
 
   /**
-   * 언어 코드를 출력 파일 이름 형식으로 변환
-   * @param language 언어 코드
-   * @returns 변환된 파일 이름 형식
+   * Convert language code to output file name format
+   * @param language Language code
+   * @returns Converted file name format
    */
   private formatOutput(language: LanguageCode): string {
-    // 사용자 정의 포맷팅 함수가 있으면 해당 함수 사용
+    // Use custom formatting function if provided
     if (this.config.output.formatLanguageCode) {
       return this.config.output.formatLanguageCode(language);
     }
 
-    // fileNameFormat 옵션에 따라 형식 변환
+    // Convert format according to fileNameFormat option
     const format = this.config.output.fileNameFormat || "simple";
 
     switch (format) {
       case "default":
-        // 그대로 유지
+        // Keep as is
         return language;
 
       case "simple":
-        // 하이픈 제거 (예: zh-Hans -> zhHans)
+        // Remove hyphens (e.g., zh-Hans -> zhHans)
         return language.replace(/-/g, "");
 
       case "camelCase":
-        // 카멜 케이스 (예: zh-hans -> zhHans)
+        // Camel case (e.g., zh-hans -> zhHans)
         return language
           .toLowerCase()
           .split("-")
@@ -498,7 +497,7 @@ module.exports = ${langVarName};
           .join("");
 
       case "pascalCase":
-        // 파스칼 케이스 (예: zh-hans -> ZhHans)
+        // Pascal case (e.g., zh-hans -> ZhHans)
         return language
           .toLowerCase()
           .split("-")
@@ -508,15 +507,15 @@ module.exports = ${langVarName};
           .join("");
 
       case "snake_case":
-        // 스네이크 케이스 (예: zh-Hans -> zh_hans)
+        // Snake case (e.g., zh-Hans -> zh_hans)
         return language.toLowerCase().replace(/-/g, "_");
 
       case "kebab-case":
-        // 케밥 케이스 (예: zh-Hans -> zh-hans)
+        // Kebab case (e.g., zh-Hans -> zh-hans)
         return language.toLowerCase();
 
       default:
-        // 기본값: 하이픈 제거
+        // Default: remove hyphens
         return language.replace(/-/g, "");
     }
   }
