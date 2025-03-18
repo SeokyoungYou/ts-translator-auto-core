@@ -19,6 +19,7 @@ export interface TranslationConfig {
     preserveNestedStructure?: boolean; // Whether to preserve nested structure
     formatLanguageCode?: (language: LanguageCode) => string; // Function for formatting language codes
     fileNameFormat?: FileNameFormat; // Option for file name format
+    fileNameSuffix?: string; // Suffix to add before file extension (e.g., '.config')
   };
   translation: {
     targetLanguages: LanguageCode[];
@@ -405,9 +406,12 @@ export class TranslationManager {
     // Convert language code for file name
     const filenameLanguage = this.formatOutput(language);
 
+    // Add suffix if provided
+    const suffix = this.config.output.fileNameSuffix || "";
+
     const outputPath = path.join(
       this.config.output.directory,
-      `${filenameLanguage}${fileExtension}`
+      `${filenameLanguage}${suffix}${fileExtension}`
     );
 
     // Create directory if it doesn't exist
