@@ -277,15 +277,18 @@ export class TranslationManager {
       // Convert language code for file name
       const filenameLanguage = this.formatOutput(language);
 
+      // Add suffix if provided
+      const suffix = this.config.output.fileNameSuffix || "";
+
       const targetFilePath = path.join(
         this.config.output.directory,
-        `${filenameLanguage}${fileExtension}`
+        `${filenameLanguage}${suffix}${fileExtension}`
       );
 
       // Return null if file doesn't exist
       if (!fs.existsSync(targetFilePath)) {
         console.log(
-          `⚠️ No existing ${filenameLanguage}${fileExtension} file. Creating new file.`
+          `⚠️ No existing ${filenameLanguage}${suffix}${fileExtension} file. Creating new file.`
         );
         return null;
       }
